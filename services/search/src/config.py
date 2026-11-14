@@ -28,6 +28,8 @@ class Settings(BaseSettings):
 
     # NVIDIA API (OpenAI-compatible)
     NVIDIA_API_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
+    # For asymmetric models (e.g., nemotron-3.5-embed): "query" or "passage"
+    NVIDIA_INPUT_TYPE: str = "query"
 
     # Local embedding model (for local provider)
     LOCAL_EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"

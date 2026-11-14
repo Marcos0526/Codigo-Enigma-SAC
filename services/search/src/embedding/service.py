@@ -243,14 +243,16 @@ class NVIDIAEmbeddingProvider(EmbeddingProvider):
     def __init__(
         self,
         api_key: str,
-        model: str = "nvidia/nv-embedqa-e5-v5",
+        model: str = "nvidia/nemotron-3.5-embed-1b",
         dimensions: int = 1024,
         base_url: str = None,
+        input_type: str = "query",  # "query" or "passage" for asymmetric models
     ):
         self.api_key = api_key
         self.model = model
         self.dimensions = dimensions
         self.base_url = base_url or settings.NVIDIA_API_BASE_URL
+        self.input_type = input_type
         self._client: Optional[httpx.AsyncClient] = None
 
     def _get_client(self) -> httpx.AsyncClient:
@@ -270,13 +272,19 @@ class NVIDIAEmbeddingProvider(EmbeddingProvider):
         """Generate embeddings via NVIDIA API (OpenAI-compatible)."""
         client = self._get_client()
 
+        payload = {
+            "input": texts,
+            "model": self.model,
+            "dimensions": self.dimensions,
+        }
+        
+        # Add input_type for asymmetric models (like nemotron-3.5-embed)
+        if self.input_type:
+            payload["input_type"] = self.input_type
+
         response = await client.post(
             "/embeddings",
-            json={
-                "input": texts,
-                "model": self.model,
-                "dimensions": self.dimensions,
-            },
+            json=payload,
         )
         response.raise_for_status()
         data = response.json()
@@ -339,6 +347,7 @@ class EmbeddingService:
                 model=settings.EMBEDDING_MODEL,
                 dimensions=settings.EMBEDDING_DIMENSIONS,
                 base_url=settings.NVIDIA_API_BASE_URL,
+                input_type=settings.NVIDIA_INPUT_TYPE,
             )
         else:
             raise ValueError(f"Unknown embedding provider: {provider_type}")

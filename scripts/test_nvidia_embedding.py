@@ -12,22 +12,21 @@ import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "services"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from search.src.config import settings
-from search.src.embedding.service import NVIDIAEmbeddingProvider
+from services.search.src.config import settings
+from services.search.src.embedding.service import NVIDIAEmbeddingProvider
 
 
 async def main():
-    # Get API key from environment
-    api_key = os.getenv("NVIDIA_API_KEY") or os.getenv("EMBEDDING_API_KEY")
+    # Get API key from settings (which loads from .env)
+    api_key = settings.EMBEDDING_API_KEY
     
     if not api_key:
-        print("❌ Error: NVIDIA_API_KEY or EMBEDDING_API_KEY environment variable not set")
-        print("\nUsage:")
-        print("  export NVIDIA_API_KEY='your-nvidia-api-key'")
-        print("  python scripts/test_nvidia_embedding.py")
-        print("\nGet your API key from: https://build.nvidia.com/")
+        print("❌ Error: EMBEDDING_API_KEY not configured in settings")
+        print("\nCheck your .env file has:")
+        print("  EMBEDDING_PROVIDER=nvidia")
+        print("  EMBEDDING_API_KEY=your-key")
         sys.exit(1)
     
     print(f"🔧 Testing NVIDIA Embedding Provider")

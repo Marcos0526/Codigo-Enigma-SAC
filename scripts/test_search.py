@@ -19,9 +19,9 @@ import asyncpg
 import structlog
 from pgvector.asyncpg import register_vector
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "services"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from api.src.config import settings
+from services.search.src.config import settings
 
 logger = structlog.get_logger()
 
@@ -83,8 +83,7 @@ async def vector_search(
     match_count: int = 10,
 ) -> List[Dict[str, Any]]:
     """Execute vector similarity search."""
-    embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
-    
+    # Pass the list directly - asyncpg handles vector conversion
     query = """
         SELECT
             d.dataset_id,
@@ -108,7 +107,7 @@ async def vector_search(
         LIMIT $3
     """
     
-    rows = await conn.fetch(query, embedding_str, min_similarity, match_count)
+    rows = await conn.fetch(query, query_embedding, min_similarity, match_count)
     return [dict(row) for row in rows]
 
 

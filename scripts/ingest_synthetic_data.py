@@ -23,22 +23,23 @@ from pgvector.asyncpg import register_vector
 
 import asyncpg
 
-# Add services to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "services"))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from catalog.src.models.catalog import (
-    CATALOG_VERSION,
-    EMBEDDING_MODEL,
-    EMBEDDING_VERSION,
-)
-from catalog.src.models.catalog import (
+from services.search.src.config import settings
+from services.catalog.src.models.catalog import (
     DataFormat,
     URLType,
     VerificationStatus,
     AccessPolicy,
     ColumnType,
 )
-from catalog.src.validation.numerical_detector import NumericalDetector
+from services.catalog.src.validation.numerical_detector import NumericalDetector
+
+# Use settings from config (which loads from .env)
+CATALOG_VERSION = settings.CATALOG_VERSION
+EMBEDDING_MODEL = settings.EMBEDDING_MODEL
+EMBEDDING_VERSION = settings.EMBEDDING_VERSION
 
 logger = structlog.get_logger()
 
@@ -384,7 +385,8 @@ async def ingest_dataset(
         if col_type != ColumnType.TEXT:
             sample_vals = df[col].dropna().head(5).tolist()
             if sample_vals:
-                sample_values = sample_vals
+                # Convert to JSON string for PostgreSQL JSONB column
+                sample_values = json.dumps(sample_vals)
 
         try:
             await conn.execute(
@@ -446,11 +448,11 @@ async def ingest_dataset(
 
     # Insert embedding
     try:
-        embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
+        # pgvector expects a list/array, not a string - pass the list directly
         await conn.execute(
             """
             INSERT INTO dataset_embeddings (dataset_id, embedding, model, version, content_hash)
-            VALUES ($1, $2::vector, $3, $4, $5)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (dataset_id) DO UPDATE SET
                 embedding = EXCLUDED.embedding,
                 model = EXCLUDED.model,
@@ -458,7 +460,7 @@ async def ingest_dataset(
                 content_hash = EXCLUDED.content_hash
             """,
             dataset_db_id,
-            embedding_str,
+            embedding,  # Pass list directly, asyncpg will handle vector conversion
             EMBEDDING_MODEL,
             EMBEDDING_VERSION,
             hashlib.sha256(embedding_text.encode()).hexdigest()[:64],
