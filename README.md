@@ -1,12 +1,12 @@
 # Semantic Data Discovery & Interactive Dashboards
 
-> **Status:** Architecture proposal · **Version:** 0.1.0 (planning)
+> **Status:** Architecture proposal · **Version:** 0.2.0 (planning)
 
-A web application that turns natural-language questions into **dataset discovery**, **evidence-based summaries**, and **interactive visualizations**. At its core is a semantic search engine powered by embeddings and retrieval-augmented generation (RAG), which identifies the most relevant dataset from a metadata catalog.
+A web application that turns natural-language questions into **dataset discovery**, **evidence-based summaries**, and **interactive visualizations**. At its core is a semantic search engine powered by embeddings and retrieval-augmented generation (RAG), which retrieves and ranks all relevant eligible datasets from a metadata catalog scoped to **NASA PSI — Combustion Science: 26 Selected Investigations**. Only datasets containing usable numerical measurements are eligible for analysis.
 
 ## 1. Overview
 
-Users enter a question in a search bar. The system interprets the intent, searches a semantic index of dataset descriptions, and returns a JSON object containing the recommended dataset's URL and metadata. This result enables two capabilities: an LLM-generated summary and a chart builder for selecting columns and creating visualizations. The web interface brings the entire workflow together.
+Users enter a question in a search bar. The system interprets the intent, searches a semantic index of dataset descriptions, and returns a JSON object containing **all matching, numerically usable datasets** (not only the top result), each with a name, description, source link, and metadata. The complete result list appears immediately after the first prompt; users can then select a dataset. This result enables two capabilities: an LLM-generated summary and a chart builder for selecting columns and creating visualizations. The web interface brings the entire workflow together.
 
 ### Main objective
 
@@ -14,9 +14,10 @@ Make data exploration accessible without requiring users to know the names, loca
 
 ### MVP scope
 
-- Search for datasets using natural language.
+- Search exclusively within **NASA PSI — Combustion Science: 26 Selected Investigations** using natural language.
+- Include only datasets with usable numerical data; descriptive metadata remains available for discovery.
 - Retrieve and rank results using semantic similarity.
-- Return structured JSON identifying the recommended dataset.
+- Return structured JSON containing **every qualifying match**, ranked by relevance, with names, descriptions, and source URLs.
 - Summarize **verifiable metadata** and, when data is accessible, **statistics computed from the dataset**.
 - Inspect columns and create interactive charts.
 - Display results in a unified web application.
@@ -38,17 +39,20 @@ flowchart TD
     D --> E[Embedding model]
     E --> F[(Metadata vector index)]
     F --> G[RAG retrieval + ranking]
-    G --> H{Sufficient match?}
-    H -- No --> I[Show alternatives / request clarification]
-    H -- Yes --> J[JSON: dataset_id, URL, score, metadata]
-    J --> K[Catalog and data access service]
+    G --> H[Filter: 26 selected PSI investigations and numerical data]
+    H --> I{Any eligible matches?}
+    I -- No --> Q[Show no matching numerical datasets]
+    I -- Yes --> J[JSON: all matches with ID, name, description, URL, score]
+    J --> R[Display all results after first prompt]
+    R --> S[User selects a dataset]
+    S --> K[Catalog and data access service]
     K --> L[Data profiling / verifiable statistics]
     L --> M[LLM: evidence-based summary]
     K --> N[Schema and column discovery]
     N --> O[Visualization engine]
     M --> P[Web dashboard]
     O --> P
-    I --> P
+    Q --> P
 ```
 
 > **Note:** RAG retrieves **descriptions and metadata** to identify sources; it does not replace reading the actual dataset. Statistical summaries and charts require querying the underlying data through controlled connectors.
@@ -71,64 +75,101 @@ flowchart TD
 
 ## 3. Project Phases
 
-### Phase 1 — Semantic Search and Data Source Retrieval
+### Phase 1 — Semantic Search and Complete Numerical Dataset Discovery
 
-**Objective:** transform a natural-language question into JSON identifying the recommended data source.
+**Objective:** transform the user's first natural-language prompt into a **complete, ranked list of matching numerical datasets** from the fixed collection **NASA PSI — Combustion Science: 26 Selected Investigations**. Display **every qualifying match**, with its **name, description, and link**, before a dataset is selected for the existing summarization and charting workflows.
+
+**Source scope and numerical-only rule:**
+
+- Search only the **26 preselected NASA PSI Combustion Science investigations**; the 26 investigations define the allowed search corpus, **not a guaranteed count of individual data files**.
+- Index their descriptions, scientific objectives, approaches, experiment identifiers, and dataset metadata as **searchable text**. Text is used for retrieval only, not as analytical data.
+- Include a dataset in the results only when its numerical content can be verified from its schema, a cataloged numerical-data indicator, or an authorized inspection of the actual source (e.g., numeric measurements in CSV, Parquet, or equivalent data tables).
+- Exclude sources that contain only reports, images, explanatory text, or other nonnumerical artifacts. Do not assume that every PSI investigation provides a downloadable numerical dataset.
+- Retain provenance: each dataset must reference its original PSI investigation and a verified source URL. An investigation page must not be misrepresented as a direct data-download URL.
 
 **Workflow:**
 
-1. The user enters a question in the search bar.
-2. The system normalizes the text and performs **sector classification**, initially defined as identifying the domain (e.g., health, economics, or energy), search intent, and relevant entities.
-3. An embedding is generated for the query.
-4. The vector index of dataset descriptions is searched.
-5. The RAG retriever selects the *top-k* candidates and ranks them by relevance; optional sector filters and reranking can be applied.
-6. A configurable relevance threshold is checked. If no sufficiently relevant match exists, alternatives are returned without inventing a URL.
-7. The API returns structured JSON.
+1. The user enters the **first prompt** in the web search bar (for example, asking about combustion temperature or flame behavior).
+2. The system normalizes the query and performs **sector/subtopic classification** within combustion science (e.g., flame dynamics, microgravity combustion, thermal measurements, or fluid behavior). This replaces unrestricted cross-domain classification.
+3. The embedding service vectorizes the query.
+4. The vector index searches the metadata catalog of the **26 selected PSI investigations and their associated numerical datasets**.
+5. The RAG retriever gathers and ranks candidates by semantic relevance, optionally using metadata filters and reranking. Retrieval must **not be truncated to a displayed top-k**: pagination or exhaustive candidate collection must preserve all qualifying matches from the allowed catalog.
+6. The system validates that each candidate belongs to the approved collection, has a usable numerical dataset, and has a valid, authorized URL. Remove duplicate references to the same dataset while preserving distinct datasets within an investigation.
+7. Apply the configured relevance criteria and return **all eligible matches**, ordered by relevance. If none qualify, explicitly return an empty result list and a helpful no-match message; never invent a source or URL.
+8. The API returns a JSON object with a `datasets` array and a `total_matches` count.
+9. **Immediately after the first prompt**, the web interface displays **all returned datasets** in a scrollable/paginated results list. Each item visibly includes **dataset name, short description, source link**, and optionally PSI identifier, numerical columns, file format, and relevance score. UI pagination must not silently drop matches.
+10. The user selects any one of the listed datasets. Its stable `dataset.id` feeds the already planned **Phase 2 (LLM summary)** and **Phase 3 (interactive chart builder)** without altering those phases.
 
 **Example input:**
 
 ```text
-Show datasets about trends in respiratory infections by region and year.
+Find numerical datasets about combustion temperature measurements in microgravity.
 ```
 
-**Example response** (illustrative values, not a real data source):
+**Example response** (entirely illustrative placeholders; **not verified NASA PSI records or URLs**):
 
 ```json
 {
-  "query": "Show datasets about trends in respiratory infections by region and year.",
-  "status": "match_found",
-  "dataset": {
-    "id": "respiratory-infections-001",
-    "name": "Respiratory infections by region and year",
-    "url": "https://data.example.org/datasets/respiratory-infections-001.csv",
-    "description": "Annual regional observations of respiratory infections.",
-    "sector": "health",
-    "format": "csv"
-  },
-  "retrieval": {
-    "score": 0.91,
-    "score_type": "normalized_similarity",
-    "alternatives": []
-  }
+  "query": "Find numerical datasets about combustion temperature measurements in microgravity.",
+  "status": "matches_found",
+  "source_collection": "NASA PSI — Combustion Science: 26 Selected Investigations",
+  "data_filter": "numeric_only",
+  "total_matches": 2,
+  "datasets": [
+    {
+      "id": "example-psi-numeric-001",
+      "psi_id": "PSI-EXAMPLE-A",
+      "name": "Example combustion temperature measurements",
+      "description": "Illustrative numerical temperature observations under reduced gravity.",
+      "url": "https://example.org/illustrative/numeric-data-001.csv",
+      "format": "csv",
+      "numeric_columns": ["time_s", "temperature_k"],
+      "score": 0.93
+    },
+    {
+      "id": "example-psi-numeric-002",
+      "psi_id": "PSI-EXAMPLE-B",
+      "name": "Example flame sensor measurements",
+      "description": "Illustrative time-series numerical observations of a flame experiment.",
+      "url": "https://example.org/illustrative/numeric-data-002.csv",
+      "format": "csv",
+      "numeric_columns": ["time_s", "signal_v"],
+      "score": 0.87
+    }
+  ]
 }
 ```
 
-The `score` is illustrative and **does not represent a probability**; its interpretation depends on the similarity method and retriever calibration.
+For no qualifying matches, use `"status": "no_matches"`, `"total_matches": 0`, and `"datasets": []`. Scores above are illustrative and **are not probabilities**; their meaning depends on the retrieval method and calibration.
+
+**First-prompt UI requirements:**
+
+- Show the full set of qualifying results, not a single recommended dataset and not only a hidden list of alternatives.
+- Provide each result's **name, description, and clickable verified link**, plus a control for selecting it.
+- Display the number of matches and their source PSI investigation identifiers where available.
+- Allow ranking, pagination, and filtering without discarding the underlying result set.
+- Clearly distinguish **PSI investigation landing-page URLs** from **direct numerical dataset download URLs**.
+- Keep the original downstream behavior: selecting a result enables the LLM summary and numerical column-based visualization.
 
 **Deliverables:**
 
-- Metadata catalog and ingestion/indexing pipeline.
+- Bounded metadata catalog and ingestion/indexing pipeline for the 26 selected PSI investigations.
+- Numerical-dataset eligibility and URL validation rules.
 - Embedding service and vector index.
-- `POST /api/v1/search` API.
-- Validated JSON schema and no-match handling.
-- Relevance tests using an evaluation query set.
+- `POST /api/v1/search` returning a JSON array of **all** qualifying matches.
+- Results UI showing all names, descriptions, and links after the first prompt.
+- Validated JSON schema, deduplication, pagination, and no-match handling.
+- Relevance tests using combustion-science evaluation queries.
 
 **Acceptance criteria:**
 
-- Valid queries produce well-formed, verifiable JSON.
-- Every returned URL exists in the catalog and complies with access policies.
-- If the relevance threshold is not met, the system reports that no reliable match was found.
-- Search candidates can be traced back to their metadata.
+- Search results originate exclusively from the 26 selected NASA PSI Combustion Science investigations.
+- All returned datasets have verifiable numerical content; textual metadata is permitted only for discovery and explanation.
+- **Every qualifying result** is included in the JSON array and accessible in the UI, with name, description, and valid URL.
+- `total_matches` equals the number of returned distinct datasets, regardless of UI pagination.
+- No result URL is fabricated; all references are traceable to source metadata and comply with access policies.
+- When no eligible dataset is found, the API returns an empty list and communicates the reason without inventing alternatives.
+- Selecting a dataset passes its `dataset.id` into the existing summarization and visualization flows.
 
 ### Phase 2 — LLM-Based Summarization
 
@@ -174,7 +215,7 @@ The `score` is illustrative and **does not represent a probability**; its interp
 **Interface sections:**
 
 - **Home:** search bar and example questions.
-- **Results:** recommended dataset, alternatives, similarity, provenance, and URL.
+- **Results:** all matching numerical datasets, each with name, description, URL, similarity, and provenance; selectable for the next steps.
 - **Summary:** LLM-generated description with limitations and sources.
 - **Explorer:** data preview, schema, selectors, filters, and charts.
 - **Dashboard:** layout of selected visualizations and interactive controls.
@@ -189,14 +230,14 @@ The `score` is illustrative and **does not represent a probability**; its interp
 
 | Method | Route | Purpose |
 |---|---|---|
-| `POST` | `/api/v1/search` | Classify, vectorize, and retrieve data sources |
+| `POST` | `/api/v1/search` | Classify, vectorize, and retrieve all qualifying numerical PSI datasets |
 | `GET` | `/api/v1/datasets/{id}` | Retrieve source metadata |
 | `GET` | `/api/v1/datasets/{id}/schema` | Return columns and data types |
 | `GET` | `/api/v1/datasets/{id}/preview` | Return a bounded sample of records |
 | `POST` | `/api/v1/datasets/{id}/summary` | Generate an evidence-based summary |
 | `POST` | `/api/v1/charts/preview` | Generate the chart specification and/or data |
 
-**Integration principle:** Phases 2 and 3 use `dataset.id` as a stable reference. The URL is output information and **must not** be accepted as an arbitrary address for the server to download without validation.
+**Integration principle:** Phase 1 returns multiple items in `datasets[]`; after selection, Phases 2 and 3 use the selected `dataset.id` as a stable reference. The URL is output information and **must not** be accepted as an arbitrary address for the server to download without validation.
 
 ## 5. Minimum Catalog Data Model
 
@@ -284,7 +325,7 @@ Final technology choices should be validated against source formats, dataset cou
 | Milestone | Verifiable outcome | Dependency |
 |---|---|---|
 | M0 — Foundations | Initial catalog, test dataset, and API contracts | None |
-| M1 — Phase 1 | Query → RAG → JSON with an authorized URL | M0 |
+| M1 — Phase 1 | Query → RAG → all matching numerical PSI datasets in JSON and results UI | M0 |
 | M2 — Phase 2 | JSON → profiling → traceable summary | M1 |
 | M3 — Phase 3 | JSON → schema → interactive chart | M1 |
 | M4 — Phase 4 | Integrated web interface and MVP deployment | M2 and M3 |
@@ -293,8 +334,8 @@ Phases 2 and 3 can be developed **in parallel** once the Phase 1 contract is sta
 
 ## 10. Next Steps
 
-1. Define 10–30 real datasets with descriptions, URLs, columns, and permissions.
-2. Specify the **sector classification** taxonomy and design 20–50 evaluation questions.
+1. Catalog the 26 selected NASA PSI Combustion Science investigations and verify their available numerical datasets, descriptions, URLs, columns, and permissions.
+2. Specify the **combustion science subtopic classification** taxonomy and design 20–50 evaluation questions.
 3. Decide which formats the MVP will support (for example, CSV and Parquet).
 4. Implement the catalog schema, ingestion, and `POST /api/v1/search`.
 5. Establish the stable `dataset.id` contract for summarization and chart generation.
@@ -303,7 +344,7 @@ Phases 2 and 3 can be developed **in parallel** once the Phase 1 contract is sta
 ## 11. Project Status
 
 - [ ] Catalog and test data sources
-- [ ] Phase 1: semantic search + RAG + JSON
+- [ ] Phase 1: semantic search + RAG + complete numerical-results JSON and UI
 - [ ] Phase 2: LLM summary with verifiable evidence
 - [ ] Phase 3: column selection and charts
 - [ ] Phase 4: integrated web interface
