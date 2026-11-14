@@ -352,4 +352,153 @@ Phases 2 and 3 can be developed **in parallel** once the Phase 1 contract is sta
 
 ---
 
+## 12. Quick Start: Synthetic Data Pipeline with NVIDIA Embeddings
+
+This section provides step-by-step instructions to run the complete synthetic data pipeline with NVIDIA Nemotron embeddings.
+
+### Prerequisites
+
+- Docker and Docker Compose
+- NVIDIA API key from [build.nvidia.com](https://build.nvidia.com/)
+- Python 3.9+ (for local scripts)
+
+### 1. Configure Environment
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env and add your NVIDIA API key
+# Required variables:
+# EMBEDDING_PROVIDER=nvidia
+# EMBEDDING_API_KEY=nvapi_your_key_here
+# EMBEDDING_MODEL=nvidia/nemotron-3.5-embed-1b
+# EMBEDDING_DIMENSIONS=1024
+```
+
+### 2. Start Infrastructure
+
+```bash
+# Start PostgreSQL with pgvector and Redis
+docker-compose -f infra/docker-compose.yml up -d postgres redis
+
+# Wait for services to be healthy (about 10-15 seconds)
+docker-compose -f infra/docker-compose.yml ps
+```
+
+### 3. Initialize Database Schema
+
+```bash
+# The schema is automatically applied via Docker init scripts
+# Verify tables exist:
+docker exec enigma-sac-postgres psql -U enigma -d enigma_sac -c "\dt"
+```
+
+### 4. Generate Synthetic Data (Optional - already included)
+
+```bash
+# Generate 10 synthetic NASA PSI combustion datasets (~30K rows)
+python scripts/generate_synthetic_data.py
+```
+
+### 5. Ingest Data with NVIDIA Embeddings
+
+```bash
+# Load .env variables and ingest all 10 datasets with embeddings
+export $(cat .env | xargs) && python scripts/ingest_synthetic_data.py
+```
+
+Expected output: `ingestion_complete successful=10 total=10`
+
+### 6. Verify Installation
+
+```bash
+# Check database state
+python scripts/check_database.py
+
+# Test NVIDIA embedding provider
+python scripts/test_nvidia_embedding.py
+
+# Run search validation (20 test queries)
+python scripts/test_search.py
+```
+
+### 7. Expected Results
+
+| Metric | Value |
+|--------|-------|
+| Datasets ingested | 10 |
+| Total rows | ~30,238 |
+| Embedding model | nvidia/nemotron-3.5-embed-1b |
+| Embedding dimensions | 1024 |
+| Search recall | ~90% |
+| Search precision | ~23% |
+
+All 10 datasets should be retrievable via semantic search.
+
+### 8. API Usage
+
+```bash
+# Start the API service (optional, for web integration)
+docker-compose -f infra/docker-compose.yml up -d api
+
+# Search endpoint
+curl -X POST http://localhost:8000/api/v1/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "combustion temperature measurements in microgravity"}'
+```
+
+### Dataset Details
+
+| Dataset ID | PSI Investigation | Description | Rows |
+|------------|-------------------|-------------|------|
+| `psi-20-bre-temperature-csv` | PSI-20 | BRE Flame Temperature Measurements | 5,000 |
+| `psi-21-cld-soot-csv` | PSI-21 | CLD Flame Soot Volume Fraction Data | 3,000 |
+| `psi-69-flex-droplet-extinction-csv` | PSI-69 | FLEX Droplet Extinction Measurements | 4,000 |
+| `psi-39-cfi-cool-flame-csv` | PSI-39 | CFI Cool Flame Droplet Temperature Data | 3,500 |
+| `psi-107-spice-smoke-point-csv` | PSI-107 | SPICE Smoke Point and Flame Length Data | 1,440 |
+| `psi-26-bass-solid-flame-spread-csv` | PSI-26 | BASS Solid Fuel Flame Spread Rates | 2,500 |
+| `psi-102-same-smoke-aerosol-csv` | PSI-102 | SAME Smoke Aerosol Size Distribution Data | 1,998 |
+| `psi-98-saffire-i-fabric-burn-csv` | PSI-98 | SAFFIRE-I Large Fabric Burn Sensor Data | 5,000 |
+| `psi-159-cfig-gaseous-cool-flame-csv` | PSI-159 | CFI-G Gaseous Cool Flame Temperature Data | 3,000 |
+| `psi-106-slice-liftoff-csv` | PSI-106 | SLICE Flame Liftoff and Structure Data | 800 |
+
+### Switching Embedding Providers
+
+The system supports multiple embedding providers via `EMBEDDING_PROVIDER`:
+
+```bash
+# NVIDIA (current)
+EMBEDDING_PROVIDER=nvidia
+EMBEDDING_MODEL=nvidia/nemotron-3.5-embed-1b
+EMBEDDING_DIMENSIONS=1024
+
+# Local (sentence-transformers)
+EMBEDDING_PROVIDER=local
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+EMBEDDING_DIMENSIONS=384
+
+# OpenAI
+EMBEDDING_PROVIDER=openai
+EMBEDDING_API_KEY=sk-your-key
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIMENSIONS=1536
+
+# Remote HTTP endpoint
+EMBEDDING_PROVIDER=remote
+EMBEDDING_API_URL=http://your-embedding-service:8080/embed
+```
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| "Model not found" / 410 Gone | Update `EMBEDDING_MODEL` to a current model (e.g., `nvidia/nemotron-3.5-embed-1b`) |
+| "input_type parameter required" | Set `NVIDIA_INPUT_TYPE=query` in `.env` for asymmetric models |
+| Embedding dimensions mismatch | Ensure `EMBEDDING_DIMENSIONS` matches model output (1024 for nemotron-3.5-embed-1b) |
+| Database connection failed | Verify PostgreSQL is running: `docker-compose ps` |
+| Vector type error | Ensure pgvector extension is installed: `CREATE EXTENSION vector;` |
+
+---
+
 **Note:** Names, API routes, JSON values, tools, and example URLs are initial proposals subject to validation during technical design.
