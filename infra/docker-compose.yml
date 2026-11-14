@@ -81,9 +81,12 @@ services:
       APP_PORT: 8000
       DATABASE_URL: postgresql://${POSTGRES_USER:-enigma}:${POSTGRES_PASSWORD:-enigma}@postgres:5432/enigma_sac
       REDIS_URL: redis://redis:6379
-      EMBEDDING_API_URL: http://embedding-service:8080/embed
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-local}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_API_URL: ${EMBEDDING_API_URL:-http://embedding-service:8080/embed}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
       EMBEDDING_VERSION: ${EMBEDDING_VERSION:-1.0.0}
+      NVIDIA_API_BASE_URL: ${NVIDIA_API_BASE_URL:-https://integrate.api.nvidia.com/v1}
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-gpt-4-turbo-preview}

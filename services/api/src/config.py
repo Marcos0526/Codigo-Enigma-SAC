@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     EMBEDDING_VERSION: str = "1.0.0"
     VECTOR_DIMENSIONS: int = 384
 
+    # NVIDIA API (when using EMBEDDING_PROVIDER=nvidia)
+    NVIDIA_API_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
+
     # LLM Service
     LLM_PROVIDER: str = "openai"
     LLM_API_KEY: str = ""

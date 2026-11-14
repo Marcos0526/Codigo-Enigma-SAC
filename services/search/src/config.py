@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 10
 
     # Embedding Service
-    EMBEDDING_PROVIDER: str = "local"  # local, openai, cohere, huggingface
+    EMBEDDING_PROVIDER: str = "local"  # local, openai, nvidia, remote
     EMBEDDING_API_KEY: str = ""
     EMBEDDING_API_URL: str = "http://localhost:8080/embed"
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSIONS: int = 384
     EMBEDDING_BATCH_SIZE: int = 32
     EMBEDDING_MAX_LENGTH: int = 512
+
+    # NVIDIA API (OpenAI-compatible)
+    NVIDIA_API_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
 
     # Local embedding model (for local provider)
     LOCAL_EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"

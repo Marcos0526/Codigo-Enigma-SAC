@@ -237,6 +237,76 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
             return False
 
 
+class NVIDIAEmbeddingProvider(EmbeddingProvider):
+    """NVIDIA embedding provider (OpenAI-compatible API)."""
+
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "nvidia/nv-embedqa-e5-v5",
+        dimensions: int = 1024,
+        base_url: str = None,
+    ):
+        self.api_key = api_key
+        self.model = model
+        self.dimensions = dimensions
+        self.base_url = base_url or settings.NVIDIA_API_BASE_URL
+        self._client: Optional[httpx.AsyncClient] = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                timeout=httpx.Timeout(settings.EMBEDDING_TIMEOUT),
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                base_url=self.base_url,
+            )
+        return self._client
+
+    @retry(
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        stop=stop_after_attempt(3),
+    )
+    async def embed(self, texts: List[str]) -> EmbeddingResult:
+        """Generate embeddings via NVIDIA API (OpenAI-compatible)."""
+        client = self._get_client()
+
+        response = await client.post(
+            "/embeddings",
+            json={
+                "input": texts,
+                "model": self.model,
+                "dimensions": self.dimensions,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        embeddings = [item["embedding"] for item in data["data"]]
+
+        return EmbeddingResult(
+            embeddings=embeddings,
+            model=self.model,
+            version="1.0.0",
+            dimensions=self.dimensions,
+            token_count=data.get("usage", {}).get("total_tokens", 0),
+        )
+
+    async def health_check(self) -> bool:
+        """Check if NVIDIA API is accessible."""
+        try:
+            result = await self.embed(["health check"])
+            return len(result.embeddings) > 0
+        except Exception as e:
+            logger.error("nvidia_embedding_health_check_failed", error=str(e))
+            return False
+
+    async def close(self):
+        """Close HTTP client."""
+        if self._client:
+            await self._client.aclose()
+            self._client = None
+
+
 class EmbeddingService:
     """Main embedding service with provider management and caching."""
 
@@ -260,6 +330,15 @@ class EmbeddingService:
                 api_key=settings.EMBEDDING_API_KEY,
                 model=settings.EMBEDDING_MODEL,
                 dimensions=settings.EMBEDDING_DIMENSIONS,
+            )
+        elif provider_type == "nvidia":
+            if not settings.EMBEDDING_API_KEY:
+                raise ValueError("NVIDIA API key required for NVIDIA provider")
+            self.provider = NVIDIAEmbeddingProvider(
+                api_key=settings.EMBEDDING_API_KEY,
+                model=settings.EMBEDDING_MODEL,
+                dimensions=settings.EMBEDDING_DIMENSIONS,
+                base_url=settings.NVIDIA_API_BASE_URL,
             )
         else:
             raise ValueError(f"Unknown embedding provider: {provider_type}")
