@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.enigma-sac.org/dataset-schema.json",
+  "title": "Dataset Schema Response",
+  "type": "object",
+  "required": ["datasetId", "columns", "rowCount", "profiledAt", "profileVersion"],
+  "properties": {
+    "datasetId": {
+      "type": "string",
+      "description": "Stable unique identifier for the dataset"
+    },
+    "columns": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/datasetColumn" }
+    },
+    "rowCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of rows in the dataset"
+    },
+    "byteSize": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Size of the dataset in bytes"
+    },
+    "profiledAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the schema was last profiled"
+    },
+    "profileVersion": {
+      "type": "string",
+      "description": "Version of the profiling logic used"
+    }
+  },
+  "$defs": {
+    "datasetColumn": {
+      "type": "object",
+      "required": ["name", "type", "nullable"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Column name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["numeric", "categorical", "datetime", "text", "boolean", "unknown"],
+          "description": "Detected column data type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Column description"
+        },
+        "unit": {
+          "type": "string",
+          "description": "Unit of measurement (for numeric columns)"
+        },
+        "nullable": {
+          "type": "boolean",
+          "description": "Whether the column contains null values"
+        },
+        "sampleValues": {
+          "type": "array",
+          "items": {},
+          "maxItems": 5,
+          "description": "Sample values from the column"
+        },
+        "statistics": {
+          "$ref": "#/$defs/columnStatistics"
+        }
+      },
+      "additionalProperties": false
+    },
+    "columnStatistics": {
+      "type": "object",
+      "required": ["count", "nullCount", "min", "max", "mean", "median", "stdDev", "quartiles"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "nullCount": { "type": "integer", "minimum": 0 },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "mean": { "type": "number" },
+        "median": { "type": "number" },
+        "stdDev": { "type": "number", "minimum": 0 },
+        "quartiles": {
+          "type": "object",
+          "required": ["q1", "q2", "q3"],
+          "properties": {
+            "q1": { "type": "number" },
+            "q2": { "type": "number" },
+            "q3": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        "uniqueCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

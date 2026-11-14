@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.enigma-sac.org/chart-preview-request.json",
+  "title": "Chart Preview Request",
+  "type": "object",
+  "required": ["datasetId", "chartType", "xAxis"],
+  "properties": {
+    "datasetId": {
+      "type": "string",
+      "description": "Stable unique identifier for the dataset"
+    },
+    "chartType": {
+      "type": "string",
+      "enum": ["bar", "line", "scatter", "histogram"],
+      "description": "Type of chart to generate"
+    },
+    "xAxis": {
+      "type": "string",
+      "description": "Column name for the X axis"
+    },
+    "yAxis": {
+      "type": "string",
+      "description": "Column name for the Y axis (required for bar, line, scatter; optional for histogram)"
+    },
+    "groupBy": {
+      "type": "string",
+      "description": "Column name for grouping/color encoding"
+    },
+    "filters": {
+      "type": "object",
+      "description": "Filters to apply to the data before charting",
+      "additionalProperties": true
+    },
+    "options": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "xLabel": { "type": "string" },
+        "yLabel": { "type": "string" },
+        "color": { "type": "string" },
+        "width": { "type": "integer", "minimum": 100, "maximum": 4000 },
+        "height": { "type": "integer", "minimum": 100, "maximum": 4000 },
+        "aggregation": {
+          "type": "string",
+          "enum": ["none", "mean", "sum", "count", "min", "max"],
+          "default": "none"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "default": 1000
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

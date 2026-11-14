@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.enigma-sac.org/api-error.json",
+  "title": "API Error Response",
+  "type": "object",
+  "required": ["error"],
+  "properties": {
+    "error": {
+      "type": "object",
+      "required": ["code", "message", "requestId", "timestamp"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "VALIDATION_ERROR",
+            "NOT_FOUND",
+            "UNAUTHORIZED",
+            "FORBIDDEN",
+            "INTERNAL_ERROR",
+            "SERVICE_UNAVAILABLE",
+            "RATE_LIMITED",
+            "SSRF_BLOCKED",
+            "INVALID_URL",
+            "DATA_ACCESS_ERROR",
+            "PROFILING_ERROR",
+            "SUMMARY_GENERATION_ERROR",
+            "CHART_GENERATION_ERROR",
+            "SEARCH_ERROR"
+          ],
+          "description": "Machine-readable error code"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error message"
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional error details",
+          "additionalProperties": true
+        },
+        "requestId": {
+          "type": "string",
+          "description": "Unique request identifier for tracing"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the error occurred"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

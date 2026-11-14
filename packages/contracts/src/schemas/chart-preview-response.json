@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.enigma-sac.org/chart-preview-response.json",
+  "title": "Chart Preview Response",
+  "type": "object",
+  "required": ["datasetId", "chartType", "spec", "data", "columns", "warnings", "metadata"],
+  "properties": {
+    "datasetId": {
+      "type": "string",
+      "description": "Stable unique identifier for the dataset"
+    },
+    "chartType": {
+      "type": "string",
+      "enum": ["bar", "line", "scatter", "histogram"],
+      "description": "Type of chart generated"
+    },
+    "spec": {
+      "type": "object",
+      "description": "Chart specification (Vega-Lite or Plotly compatible)",
+      "additionalProperties": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "description": "Data points for the chart"
+    },
+    "columns": {
+      "type": "object",
+      "required": ["x"],
+      "properties": {
+        "x": { "$ref": "#/$defs/datasetColumn" },
+        "y": { "$ref": "#/$defs/datasetColumn" },
+        "groupBy": { "$ref": "#/$defs/datasetColumn" }
+      },
+      "additionalProperties": false
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Warnings about the chart (e.g., missing values, high cardinality, sampling)"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["rowCount", "filteredRowCount", "processingTimeMs", "memoryUsedBytes"],
+      "properties": {
+        "rowCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total rows in the dataset"
+        },
+        "filteredRowCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Rows after filters applied"
+        },
+        "processingTimeMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Time to generate chart in milliseconds"
+        },
+        "memoryUsedBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Memory used during chart generation"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "datasetColumn": {
+      "type": "object",
+      "required": ["name", "type", "nullable"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["numeric", "categorical", "datetime", "text", "boolean", "unknown"]
+        },
+        "description": { "type": "string" },
+        "unit": { "type": "string" },
+        "nullable": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

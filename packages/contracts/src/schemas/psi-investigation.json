@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.enigma-sac.org/psi-investigation.json",
+  "title": "PSI Investigation",
+  "type": "object",
+  "required": ["psiId", "title", "description", "researchArea", "recordType", "psiRecordUrl", "sources", "metadataStatus", "tags"],
+  "properties": {
+    "psiId": {
+      "type": "string",
+      "pattern": "^PSI-\\d+$",
+      "description": "PSI investigation identifier"
+    },
+    "title": {
+      "type": "string",
+      "description": "Official investigation title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Investigation description"
+    },
+    "researchArea": {
+      "type": "string",
+      "description": "Research area (e.g., Combustion Science)"
+    },
+    "subResearchArea": {
+      "type": "string",
+      "description": "Sub-research area from PSI index"
+    },
+    "scientificFocus": {
+      "type": "string",
+      "description": "Specific scientific focus"
+    },
+    "projectSetting": {
+      "type": "string",
+      "description": "Project setting (e.g., ISS microgravity experiment, Ground Investigation)"
+    },
+    "recordType": {
+      "type": "string",
+      "description": "PSI record type"
+    },
+    "doi": {
+      "type": "string",
+      "description": "Digital Object Identifier"
+    },
+    "doiUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "DOI URL"
+    },
+    "psiRecordUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "NASA PSI investigation record URL"
+    },
+    "objectives": {
+      "type": "string",
+      "description": "Investigation objectives"
+    },
+    "approach": {
+      "type": "string",
+      "description": "Experimental or analytical approach"
+    },
+    "sources": {
+      "type": "array",
+      "items": { "type": "string", "format": "uri" },
+      "description": "Source URLs for verification"
+    },
+    "metadataStatus": {
+      "type": "string",
+      "enum": ["verified", "pending", "failed", "unknown"],
+      "description": "Metadata verification status"
+    },
+    "verifiedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When metadata was last verified"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Topic tags for categorization"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,443 @@
+openapi: 3.0.3
+info:
+  title: Semantic Data Discovery & Interactive Dashboards API
+  version: 1.0.0
+  description: |
+    API for discovering, summarizing, and visualizing numerical datasets from
+    NASA PSI — Combustion Science: 26 Selected Investigations.
+  contact:
+    name: Enigma SAC
+    url: https://github.com/enigma-sac
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+  - url: https://api.enigma-sac.org/api/v1
+    description: Production server
+
+tags:
+  - name: Search
+    description: Semantic search for numerical datasets
+  - name: Datasets
+    description: Dataset metadata, schema, and preview
+  - name: Summarization
+    description: Evidence-based dataset summaries
+  - name: Visualization
+    description: Interactive chart generation
+  - name: Health
+    description: Service health checks
+
+components:
+  schemas:
+    SearchRequest:
+      $ref: '../schemas/search.json'
+    SearchResponse:
+      $ref: '../schemas/search-response.json'
+    Dataset:
+      $ref: '../schemas/dataset.json'
+    DatasetSchema:
+      $ref: '../schemas/dataset-schema.json'
+    DatasetPreview:
+      $ref: '../schemas/dataset-preview.json'
+    SummaryRequest:
+      $ref: '../schemas/summary.json'
+    SummaryResponse:
+      $ref: '../schemas/summary-response.json'
+    ChartPreviewRequest:
+      $ref: '../schemas/chart-preview.json'
+    ChartPreviewResponse:
+      $ref: '../schemas/chart-preview-response.json'
+    PSIInvestigation:
+      $ref: '../schemas/psi-investigation.json'
+    APIError:
+      $ref: '../schemas/api-error.json'
+    HealthCheck:
+      $ref: '../schemas/health.json'
+
+  parameters:
+    datasetIdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Stable dataset identifier
+      example: "psi-20-bre-temperature-csv"
+
+  responses:
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+          example:
+            error:
+              code: "VALIDATION_ERROR"
+              message: "Invalid request payload"
+              details:
+                field: "query"
+                message: "Query must not be empty"
+                code: "REQUIRED"
+              requestId: "req_abc123"
+              timestamp: "2024-01-15T10:30:00Z"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+          example:
+            error:
+              code: "NOT_FOUND"
+              message: "Dataset not found"
+              requestId: "req_abc123"
+              timestamp: "2024-01-15T10:30:00Z"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+          example:
+            error:
+              code: "INTERNAL_ERROR"
+              message: "An unexpected error occurred"
+              requestId: "req_abc123"
+              timestamp: "2024-01-15T10:30:00Z"
+
+    ServiceUnavailable:
+      description: Service temporarily unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+          example:
+            error:
+              code: "SERVICE_UNAVAILABLE"
+              message: "Search service temporarily unavailable"
+              requestId: "req_abc123"
+              timestamp: "2024-01-15T10:30:00Z"
+
+    SSRFBlocked:
+      description: Request blocked due to SSRF protection
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+          example:
+            error:
+              code: "SSRF_BLOCKED"
+              message: "URL blocked by security policy"
+              requestId: "req_abc123"
+              timestamp: "2024-01-15T10:30:00Z"
+
+paths:
+  /search:
+    post:
+      tags: [Search]
+      summary: Search for numerical datasets
+      description: |
+        Perform semantic search across the 26 selected NASA PSI Combustion Science investigations.
+        Returns all matching datasets with verified numerical content, ranked by relevance.
+        The `total_matches` field equals the number of datasets in the response array.
+      operationId: searchDatasets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+            example:
+              query: "combustion temperature measurements in microgravity"
+              filters:
+                hasNumericData: true
+              options:
+                includeSchema: false
+                maxResults: 50
+      responses:
+        '200':
+          description: Search completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+              example:
+                query: "combustion temperature measurements in microgravity"
+                status: "matches_found"
+                source_collection: "NASA PSI — Combustion Science: 26 Selected Investigations"
+                data_filter: "numeric_only"
+                total_matches: 2
+                datasets:
+                  - id: "psi-20-bre-temperature-csv"
+                    psiId: "PSI-20"
+                    name: "BRE Flame Temperature Measurements"
+                    description: "Temperature measurements from Burning Rate Emulator experiments"
+                    url: "https://psi.nasa.gov/physci/repo/data/investigations/PSI-20/data/bre_temperature.csv"
+                    format: "csv"
+                    numericColumns: ["time_s", "temperature_k", "pressure_kpa"]
+                    score: 0.93
+                    investigationTitle: "ACME — Burning Rate Emulator (BRE)"
+                    verificationStatus: "verified"
+                  - id: "psi-69-flex-droplet-temp-csv"
+                    psiId: "PSI-69"
+                    name: "FLEX Droplet Temperature Data"
+                    description: "Droplet temperature and extinction measurements"
+                    url: "https://psi.nasa.gov/physci/repo/data/investigations/PSI-69/data/flex_droplet.csv"
+                    format: "csv"
+                    numericColumns: ["time_s", "diameter_mm", "temperature_k"]
+                    score: 0.87
+                    investigationTitle: "Flame Extinguishment Experiment (FLEX)"
+                    verificationStatus: "verified"
+                searchMetadata:
+                  catalogVersion: "1.0.0"
+                  embeddingModel: "sentence-transformers/all-MiniLM-L6-v2"
+                  embeddingVersion: "1.0.0"
+                  retrievedAt: "2024-01-15T10:30:00Z"
+                  processingTimeMs: 142
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /datasets/{id}:
+    get:
+      tags: [Datasets]
+      summary: Get dataset metadata
+      description: Retrieve complete metadata for a specific dataset including provenance and verification status.
+      operationId: getDataset
+      parameters:
+        - $ref: '#/components/parameters/datasetIdParam'
+      responses:
+        '200':
+          description: Dataset metadata retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dataset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /datasets/{id}/schema:
+    get:
+      tags: [Datasets]
+      summary: Get dataset schema
+      description: Retrieve the schema (columns, types, statistics) for a specific dataset.
+      operationId: getDatasetSchema
+      parameters:
+        - $ref: '#/components/parameters/datasetIdParam'
+      responses:
+        '200':
+          description: Dataset schema retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetSchema'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /datasets/{id}/preview:
+    get:
+      tags: [Datasets]
+      summary: Get dataset preview
+      description: Retrieve a bounded sample of records from the dataset.
+      operationId: getDatasetPreview
+      parameters:
+        - $ref: '#/components/parameters/datasetIdParam'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Dataset preview retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetPreview'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /datasets/{id}/summary:
+    post:
+      tags: [Summarization]
+      summary: Generate dataset summary
+      description: |
+        Generate an evidence-based summary of the dataset using only verifiable metadata
+        and computed statistics. The LLM never receives raw data as instructions.
+      operationId: generateDatasetSummary
+      parameters:
+        - $ref: '#/components/parameters/datasetIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SummaryRequest'
+            example:
+              datasetId: "psi-20-bre-temperature-csv"
+              options:
+                includeStatistics: true
+                maxLength: 1000
+      responses:
+        '200':
+          description: Summary generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummaryResponse'
+              example:
+                datasetId: "psi-20-bre-temperature-csv"
+                title: "BRE Flame Temperature Measurements Summary"
+                executiveSummary: "This dataset contains temperature measurements from the Burning Rate Emulator (BRE) experiments conducted on the ISS..."
+                keyVariables: ["time_s", "temperature_k", "pressure_kpa"]
+                coverage:
+                  temporal: "2019-2021"
+                  rowCount: 15420
+                findings:
+                  - description: "Temperature ranges from 800K to 2200K across experiments"
+                    evidence: "min=800, max=2200, mean=1540"
+                    source: "computed_statistics"
+                limitations: ["Limited to gaseous fuel experiments", "Microgravity conditions only"]
+                warnings: ["Statistics computed from available CSV; full dataset may contain additional variables"]
+                sources:
+                  - type: "metadata"
+                    reference: "PSI-20 investigation record"
+                  - type: "statistics"
+                    reference: "Column statistics for temperature_k"
+                generatedAt: "2024-01-15T10:30:00Z"
+                catalogVersion: "1.0.0"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /charts/preview:
+    post:
+      tags: [Visualization]
+      summary: Generate chart preview
+      description: |
+        Generate an interactive chart specification and data for the selected dataset.
+        Validates column compatibility with the requested chart type.
+      operationId: generateChartPreview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChartPreviewRequest'
+            example:
+              datasetId: "psi-20-bre-temperature-csv"
+              chartType: "line"
+              xAxis: "time_s"
+              yAxis: "temperature_k"
+              groupBy: "experiment_id"
+              options:
+                title: "Flame Temperature Over Time"
+                aggregation: "mean"
+                limit: 500
+      responses:
+        '200':
+          description: Chart preview generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChartPreviewResponse'
+              example:
+                datasetId: "psi-20-bre-temperature-csv"
+                chartType: "line"
+                spec:
+                  $schema: "https://vega.github.io/schema/vega-lite/v5.json"
+                  mark: "line"
+                  encoding:
+                    x: { field: "time_s", type: "quantitative", title: "Time (s)" }
+                    y: { field: "temperature_k", type: "quantitative", title: "Temperature (K)", aggregate: "mean" }
+                    color: { field: "experiment_id", type: "nominal" }
+                data:
+                  - time_s: 0, temperature_k: 1200, experiment_id: "exp_1"
+                  - time_s: 1, temperature_k: 1350, experiment_id: "exp_1"
+                columns:
+                  x:
+                    name: "time_s"
+                    type: "numeric"
+                    nullable: false
+                  y:
+                    name: "temperature_k"
+                    type: "numeric"
+                    nullable: false
+                  groupBy:
+                    name: "experiment_id"
+                    type: "categorical"
+                    nullable: false
+                warnings: ["Data sampled to 500 rows for performance"]
+                metadata:
+                  rowCount: 15420
+                  filteredRowCount: 500
+                  processingTimeMs: 45
+                  memoryUsedBytes: 2048576
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Check the health status of the API and its dependencies.
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Health check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+              example:
+                status: "healthy"
+                version: "1.0.0"
+                services:
+                  catalog:
+                    status: "healthy"
+                    latencyMs: 12
+                  vectorStore:
+                    status: "healthy"
+                    latencyMs: 8
+                  embedding:
+                    status: "healthy"
+                    latencyMs: 45
+                timestamp: "2024-01-15T10:30:00Z"
+        '503':
+          description: Service unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'

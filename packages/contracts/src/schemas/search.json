@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.enigma-sac.org/search-request.json",
+  "title": "Search Request",
+  "type": "object",
+  "required": ["query"],
+  "properties": {
+    "query": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000,
+      "description": "Natural language search query about combustion science datasets"
+    },
+    "filters": {
+      "type": "object",
+      "properties": {
+        "psiIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^PSI-\\d+$"
+          },
+          "description": "Filter by specific PSI investigation IDs"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Filter by topic tags"
+        },
+        "formats": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["csv", "parquet", "json", "xlsx", "api", "sql", "unknown"]
+          },
+          "description": "Filter by data format"
+        },
+        "hasNumericData": {
+          "type": "boolean",
+          "description": "Require datasets with verified numerical content"
+        },
+        "verificationStatus": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["verified", "pending", "failed", "unknown"]
+          },
+          "description": "Filter by verification status"
+        }
+      },
+      "additionalProperties": false
+    },
+    "options": {
+      "type": "object",
+      "properties": {
+        "includeSchema": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include dataset schema in results"
+        },
+        "includeStatistics": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include computed statistics in results"
+        },
+        "maxResults": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100,
+          "description": "Maximum number of results to return"
+        },
+        "minScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Minimum relevance score threshold"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

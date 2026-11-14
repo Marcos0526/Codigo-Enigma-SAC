@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.enigma-sac.org/summary-response.json",
+  "title": "Summary Response",
+  "type": "object",
+  "required": ["datasetId", "title", "executiveSummary", "keyVariables", "coverage", "findings", "limitations", "warnings", "sources", "generatedAt", "catalogVersion"],
+  "properties": {
+    "datasetId": {
+      "type": "string",
+      "description": "Stable unique identifier for the dataset"
+    },
+    "title": {
+      "type": "string",
+      "description": "Summary title"
+    },
+    "executiveSummary": {
+      "type": "string",
+      "description": "Concise executive summary of the dataset"
+    },
+    "keyVariables": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Key variables/columns in the dataset"
+    },
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "temporal": { "type": "string" },
+        "geographic": { "type": "string" },
+        "rowCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["description", "evidence", "source"],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Description of the finding"
+          },
+          "evidence": {
+            "type": "string",
+            "description": "Evidence supporting the finding"
+          },
+          "source": {
+            "type": "string",
+            "enum": ["metadata", "computed_statistics"],
+            "description": "Source of the finding"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Known limitations of the dataset or summary"
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Warnings about unavailable information or data quality issues"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "reference"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["metadata", "statistics", "schema"],
+            "description": "Type of source"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Reference to the source (e.g., column name, statistic, metadata field)"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the summary was generated"
+    },
+    "catalogVersion": {
+      "type": "string",
+      "description": "Catalog version used for the summary"
+    },
+    "profilingVersion": {
+      "type": "string",
+      "description": "Version of the profiling logic used"
+    }
+  },
+  "additionalProperties": false
+}

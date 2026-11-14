@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.enigma-sac.org/dataset-preview.json",
+  "title": "Dataset Preview Response",
+  "type": "object",
+  "required": ["datasetId", "columns", "rows", "totalRows", "returnedRows", "offset", "limit"],
+  "properties": {
+    "datasetId": {
+      "type": "string",
+      "description": "Stable unique identifier for the dataset"
+    },
+    "columns": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/datasetColumn" }
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "description": "Sample rows from the dataset"
+    },
+    "totalRows": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of rows in the dataset"
+    },
+    "returnedRows": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of rows returned in this preview"
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Offset from the start of the dataset"
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "description": "Maximum number of rows to return"
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Any warnings about the preview (e.g., truncated data, encoding issues)"
+    }
+  },
+  "$defs": {
+    "datasetColumn": {
+      "type": "object",
+      "required": ["name", "type", "nullable"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["numeric", "categorical", "datetime", "text", "boolean", "unknown"]
+        },
+        "description": { "type": "string" },
+        "unit": { "type": "string" },
+        "nullable": { "type": "boolean" },
+        "sampleValues": {
+          "type": "array",
+          "items": {},
+          "maxItems": 5
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

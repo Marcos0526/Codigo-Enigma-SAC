@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.enigma-sac.org/search-response.json",
+  "title": "Search Response",
+  "type": "object",
+  "required": ["query", "status", "source_collection", "data_filter", "total_matches", "datasets", "searchMetadata"],
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "The original search query"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["matches_found", "no_matches"],
+      "description": "Whether any matching datasets were found"
+    },
+    "source_collection": {
+      "type": "string",
+      "const": "NASA PSI — Combustion Science: 26 Selected Investigations",
+      "description": "The source collection searched"
+    },
+    "data_filter": {
+      "type": "string",
+      "const": "numeric_only",
+      "description": "Only datasets with verified numerical content are included"
+    },
+    "total_matches": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of distinct matching datasets (must equal datasets.length)"
+    },
+    "datasets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/searchResult" },
+      "description": "Array of matching datasets, ranked by relevance"
+    },
+    "searchMetadata": {
+      "type": "object",
+      "required": ["catalogVersion", "embeddingModel", "embeddingVersion", "retrievedAt", "processingTimeMs"],
+      "properties": {
+        "catalogVersion": {
+          "type": "string",
+          "description": "Version of the catalog used for this search"
+        },
+        "embeddingModel": {
+          "type": "string",
+          "description": "Name of the embedding model used"
+        },
+        "embeddingVersion": {
+          "type": "string",
+          "description": "Version of the embedding model"
+        },
+        "queryEmbedding": {
+          "type": "array",
+          "items": { "type": "number" },
+          "description": "The query embedding vector (optional, for debugging)"
+        },
+        "retrievedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the search was executed"
+        },
+        "processingTimeMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total processing time in milliseconds"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "searchResult": {
+      "type": "object",
+      "required": ["id", "psiId", "name", "description", "url", "format", "numericColumns", "score", "verificationStatus"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable unique identifier for the dataset"
+        },
+        "psiId": {
+          "type": "string",
+          "pattern": "^PSI-\\d+$",
+          "description": "PSI investigation identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Dataset name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Short description of the dataset"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Verified URL for the dataset or investigation page"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["csv", "parquet", "json", "xlsx", "api", "sql", "unknown"],
+          "description": "Data format"
+        },
+        "numericColumns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of columns containing numerical data"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Relevance score (higher = more relevant)"
+        },
+        "investigationTitle": {
+          "type": "string",
+          "description": "Title of the PSI investigation"
+        },
+        "verificationStatus": {
+          "type": "string",
+          "enum": ["verified", "pending", "failed", "unknown"],
+          "description": "Verification status of the dataset's numerical content"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

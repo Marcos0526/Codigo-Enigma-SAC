@@ -1,0 +1,219 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.enigma-sac.org/dataset.json",
+  "title": "Dataset",
+  "type": "object",
+  "required": ["id", "psiId", "name", "description", "url", "urlType", "format", "numericColumns", "source", "accessPolicy", "catalogVersion", "verificationStatus", "tags", "provenance"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable unique identifier for the dataset"
+    },
+    "psiId": {
+      "type": "string",
+      "pattern": "^PSI-\\d+$",
+      "description": "PSI investigation identifier"
+    },
+    "name": {
+      "type": "string",
+      "description": "Dataset name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the dataset"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Verified URL for the dataset or investigation page"
+    },
+    "urlType": {
+      "type": "string",
+      "enum": ["investigation_page", "direct_download", "doi", "unverified"],
+      "description": "Type of URL - distinguishes investigation landing pages from direct data downloads"
+    },
+    "format": {
+      "type": "string",
+      "enum": ["csv", "parquet", "json", "xlsx", "api", "sql", "unknown"],
+      "description": "Data format"
+    },
+    "schema": {
+      "$ref": "#/$defs/datasetSchema"
+    },
+    "numericColumns": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Names of columns containing verified numerical data"
+    },
+    "source": {
+      "type": "string",
+      "description": "Source organization or repository"
+    },
+    "license": {
+      "type": "string",
+      "description": "License or usage terms"
+    },
+    "accessPolicy": {
+      "type": "string",
+      "enum": ["public", "restricted", "authenticated", "unknown"],
+      "description": "Access policy for the dataset"
+    },
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "temporal": { "type": "string" },
+        "geographic": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last metadata update timestamp"
+    },
+    "catalogVersion": {
+      "type": "string",
+      "description": "Catalog version when this dataset was indexed"
+    },
+    "embeddingModel": {
+      "type": "string",
+      "description": "Embedding model used for vectorization"
+    },
+    "embeddingVersion": {
+      "type": "string",
+      "description": "Version of the embedding model"
+    },
+    "verificationStatus": {
+      "type": "string",
+      "enum": ["verified", "pending", "failed", "unknown"],
+      "description": "Verification status of numerical content"
+    },
+    "verifiedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when numerical content was last verified"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Topic tags for categorization"
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["investigationUrl", "datasetUrl", "retrievedAt"],
+      "properties": {
+        "investigationUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the PSI investigation page"
+        },
+        "datasetUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the dataset (may be same as investigationUrl if no direct download)"
+        },
+        "retrievedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this provenance record was created"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "datasetSchema": {
+      "type": "object",
+      "required": ["columns"],
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/datasetColumn" }
+        },
+        "rowCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of rows in the dataset"
+        },
+        "byteSize": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Size of the dataset in bytes"
+        },
+        "profiledAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the schema was last profiled"
+        },
+        "profileVersion": {
+          "type": "string",
+          "description": "Version of the profiling logic used"
+        }
+      },
+      "additionalProperties": false
+    },
+    "datasetColumn": {
+      "type": "object",
+      "required": ["name", "type", "nullable"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Column name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["numeric", "categorical", "datetime", "text", "boolean", "unknown"],
+          "description": "Detected column data type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Column description"
+        },
+        "unit": {
+          "type": "string",
+          "description": "Unit of measurement (for numeric columns)"
+        },
+        "nullable": {
+          "type": "boolean",
+          "description": "Whether the column contains null values"
+        },
+        "sampleValues": {
+          "type": "array",
+          "items": {},
+          "maxItems": 5,
+          "description": "Sample values from the column"
+        },
+        "statistics": {
+          "$ref": "#/$defs/columnStatistics"
+        }
+      },
+      "additionalProperties": false
+    },
+    "columnStatistics": {
+      "type": "object",
+      "required": ["count", "nullCount", "min", "max", "mean", "median", "stdDev", "quartiles"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "nullCount": { "type": "integer", "minimum": 0 },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "mean": { "type": "number" },
+        "median": { "type": "number" },
+        "stdDev": { "type": "number", "minimum": 0 },
+        "quartiles": {
+          "type": "object",
+          "required": ["q1", "q2", "q3"],
+          "properties": {
+            "q1": { "type": "number" },
+            "q2": { "type": "number" },
+            "q3": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        "uniqueCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
