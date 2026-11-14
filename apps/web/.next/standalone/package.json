@@ -1,0 +1,28 @@
+{
+  "name": "enigma-sac-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Semantic Data Discovery & Interactive Dashboards - Monorepo",
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "contracts:build": "npm run build --workspace=@enigma-sac/contracts",
+    "contracts:test": "npm run test --workspace=@enigma-sac/contracts",
+    "contracts:validate": "npm run validate --workspace=@enigma-sac/contracts",
+    "dev:api": "npm run dev --workspace=@enigma-sac/api",
+    "dev:web": "npm run dev --workspace=@enigma-sac/web",
+    "test:all": "npm run test --workspaces --if-present",
+    "lint:all": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "npm@10.0.0"
+}
