@@ -205,7 +205,7 @@ async def generate_llm_summary(facts: dict, options: dict) -> str:
 
 
 async def generate_openai_summary(facts: dict, options: dict) -> str:
-    """Generate summary using OpenAI API."""
+    """Generate summary using OpenAI-compatible API (OpenAI, Groq, Together, etc.)."""
     import json
 
     max_length = options.get("maxLength", 1000)
@@ -236,9 +236,14 @@ Generate a summary with:
 7. Warnings
 8. Sources"""
 
+    # Use custom API URL if provided (for Groq, Together, etc.), otherwise default to OpenAI
+    # Ensure the URL ends with /chat/completions
+    base_url = settings.LLM_API_URL or "https://api.openai.com/v1"
+    api_url = base_url.rstrip("/") + "/chat/completions"
+
     async with httpx.AsyncClient(timeout=60.0) as client:
         response = await client.post(
-            "https://api.openai.com/v1/chat/completions",
+            api_url,
             headers={
                 "Authorization": f"Bearer {settings.LLM_API_KEY}",
                 "Content-Type": "application/json",
