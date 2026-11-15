@@ -1,605 +1,418 @@
-# Semantic Data Discovery & Interactive Dashboards
+# ENIGMA / SAC — NASA PSI Combustion Research Workspace
 
-> **Status:** Architecture proposal · **Version:** 0.2.0 (planning)
+> **Status:** working local-data prototype · **API version:** 1.0.0
 
-A web application that turns natural-language questions into **dataset discovery**, **evidence-based summaries**, and **interactive visualizations**. At its core is a semantic search engine powered by embeddings and retrieval-augmented generation (RAG), which retrieves and ranks all relevant eligible datasets from a metadata catalog scoped to **NASA PSI — Combustion Science: 26 Selected Investigations**. Only datasets containing usable numerical measurements are eligible for analysis.
+ENIGMA / SAC is a web research workspace for the NASA Physical Sciences Informatics (PSI) Combustion Science collection. It turns a natural-language research question into:
 
-## 1. Overview
+1. **Semantic search** over locally stored NASA PSI investigation files.
+2. **Grouped results** by PSI investigation, with file-format counts and a controlled “show more” list.
+3. **Experiment-aware summaries** that explain the investigation, the selected file, and the likely meaning of its variables.
+4. **Interactive charts** built from real CSV, XLSX, and XLS rows.
+5. **A cited RAG chat assistant** that can use an optional OpenAI-compatible LLM.
 
-Users enter a question in a search bar. The system interprets the intent, searches a semantic index of dataset descriptions, and returns a JSON object containing **all matching, numerically usable datasets** (not only the top result), each with a name, description, source link, and metadata. The complete result list appears immediately after the first prompt; users can then select a dataset. This result enables two capabilities: an LLM-generated summary and a chart builder for selecting columns and creating visualizations. The web interface brings the entire workflow together.
-
-### Main objective
-
-Make data exploration accessible without requiring users to know the names, locations, or schemas of available data sources beforehand.
-
-### MVP scope
-
-- Search exclusively within **NASA PSI — Combustion Science: 26 Selected Investigations** using natural language.
-- Include only datasets with usable numerical data; descriptive metadata remains available for discovery.
-- Retrieve and rank results using semantic similarity.
-- Return structured JSON containing **every qualifying match**, ranked by relevance, with names, descriptions, and source URLs.
-- Summarize **verifiable metadata** and, when data is accessible, **statistics computed from the dataset**.
-- Inspect columns and create interactive charts.
-- Display results in a unified web application.
-
-### Out of scope for the initial release
-
-- Fully automated generation of complex, multi-source dashboards.
-- Arbitrary joins across datasets.
-- Unrestricted SQL queries generated and executed by the LLM.
-- Training or fine-tuning foundation models.
-
-## 2. Proposed Architecture
-
-```mermaid
-flowchart TD
-    A[User: natural-language question] --> B[Web interface: search bar]
-    B --> C[API / Search engine]
-    C --> D[Query preprocessing and sector classification]
-    D --> E[Embedding model]
-    E --> F[(Metadata vector index)]
-    F --> G[RAG retrieval + ranking]
-    G --> H[Filter: 26 selected PSI investigations and numerical data]
-    H --> I{Any eligible matches?}
-    I -- No --> Q[Show no matching numerical datasets]
-    I -- Yes --> J[JSON: all matches with ID, name, description, URL, score]
-    J --> R[Display all results after first prompt]
-    R --> S[User selects a dataset]
-    S --> K[Catalog and data access service]
-    K --> L[Data profiling / verifiable statistics]
-    L --> M[LLM: evidence-based summary]
-    K --> N[Schema and column discovery]
-    N --> O[Visualization engine]
-    M --> P[Web dashboard]
-    O --> P
-    Q --> P
-```
-
-> **Note:** RAG retrieves **descriptions and metadata** to identify sources; it does not replace reading the actual dataset. Statistical summaries and charts require querying the underlying data through controlled connectors.
-
-### Components
-
-| Component | Responsibility |
-|---|---|
-| Frontend | Search, results, summaries, and interactive dashboards |
-| Backend API | Orchestrates services and exposes endpoints |
-| Data catalog | Stores identifiers, URLs, descriptions, sectors, schemas, and permissions |
-| Sector classification engine | Classifies query intent, domain, and potential filters |
-| Embedding service | Converts queries and descriptions into comparable vectors |
-| Vector store | Indexes dataset embeddings |
-| RAG retriever | Retrieves and ranks candidates; optionally uses a reranker |
-| Data connectors | Access CSV, Parquet, APIs, or SQL databases with restricted permissions |
-| Data profiling service | Computes statistics and validates types, missing values, units, and ranges |
-| LLM service | Produces summaries based on metadata and observed facts |
-| Chart engine | Validates columns and provides charts suited to their data types |
-
-## 3. Project Phases
-
-### Phase 1 — Semantic Search and Complete Numerical Dataset Discovery
-
-**Objective:** transform the user's first natural-language prompt into a **complete, ranked list of matching numerical datasets** from the fixed collection **NASA PSI — Combustion Science: 26 Selected Investigations**. Display **every qualifying match**, with its **name, description, and link**, before a dataset is selected for the existing summarization and charting workflows.
-
-**Source scope and numerical-only rule:**
-
-- Search only the **26 preselected NASA PSI Combustion Science investigations**; the 26 investigations define the allowed search corpus, **not a guaranteed count of individual data files**.
-- Index their descriptions, scientific objectives, approaches, experiment identifiers, and dataset metadata as **searchable text**. Text is used for retrieval only, not as analytical data.
-- Include a dataset in the results only when its numerical content can be verified from its schema, a cataloged numerical-data indicator, or an authorized inspection of the actual source (e.g., numeric measurements in CSV, Parquet, or equivalent data tables).
-- Exclude sources that contain only reports, images, explanatory text, or other nonnumerical artifacts. Do not assume that every PSI investigation provides a downloadable numerical dataset.
-- Retain provenance: each dataset must reference its original PSI investigation and a verified source URL. An investigation page must not be misrepresented as a direct data-download URL.
-
-**Workflow:**
-
-1. The user enters the **first prompt** in the web search bar (for example, asking about combustion temperature or flame behavior).
-2. The system normalizes the query and performs **sector/subtopic classification** within combustion science (e.g., flame dynamics, microgravity combustion, thermal measurements, or fluid behavior). This replaces unrestricted cross-domain classification.
-3. The embedding service vectorizes the query.
-4. The vector index searches the metadata catalog of the **26 selected PSI investigations and their associated numerical datasets**.
-5. The RAG retriever gathers and ranks candidates by semantic relevance, optionally using metadata filters and reranking. Retrieval must **not be truncated to a displayed top-k**: pagination or exhaustive candidate collection must preserve all qualifying matches from the allowed catalog.
-6. The system validates that each candidate belongs to the approved collection, has a usable numerical dataset, and has a valid, authorized URL. Remove duplicate references to the same dataset while preserving distinct datasets within an investigation.
-7. Apply the configured relevance criteria and return **all eligible matches**, ordered by relevance. If none qualify, explicitly return an empty result list and a helpful no-match message; never invent a source or URL.
-8. The API returns a JSON object with a `datasets` array and a `total_matches` count.
-9. **Immediately after the first prompt**, the web interface displays **all returned datasets** in a scrollable/paginated results list. Each item visibly includes **dataset name, short description, source link**, and optionally PSI identifier, numerical columns, file format, and relevance score. UI pagination must not silently drop matches.
-10. The user selects any one of the listed datasets. Its stable `dataset.id` feeds the already planned **Phase 2 (LLM summary)** and **Phase 3 (interactive chart builder)** without altering those phases.
-
-**Example input:**
-
-```text
-Find numerical datasets about combustion temperature measurements in microgravity.
-```
-
-**Example response** (entirely illustrative placeholders; **not verified NASA PSI records or URLs**):
-
-```json
-{
-  "query": "Find numerical datasets about combustion temperature measurements in microgravity.",
-  "status": "matches_found",
-  "source_collection": "NASA PSI — Combustion Science: 26 Selected Investigations",
-  "data_filter": "numeric_only",
-  "total_matches": 2,
-  "datasets": [
-    {
-      "id": "example-psi-numeric-001",
-      "psi_id": "PSI-EXAMPLE-A",
-      "name": "Example combustion temperature measurements",
-      "description": "Illustrative numerical temperature observations under reduced gravity.",
-      "url": "https://example.org/illustrative/numeric-data-001.csv",
-      "format": "csv",
-      "numeric_columns": ["time_s", "temperature_k"],
-      "score": 0.93
-    },
-    {
-      "id": "example-psi-numeric-002",
-      "psi_id": "PSI-EXAMPLE-B",
-      "name": "Example flame sensor measurements",
-      "description": "Illustrative time-series numerical observations of a flame experiment.",
-      "url": "https://example.org/illustrative/numeric-data-002.csv",
-      "format": "csv",
-      "numeric_columns": ["time_s", "signal_v"],
-      "score": 0.87
-    }
-  ]
-}
-```
-
-For no qualifying matches, use `"status": "no_matches"`, `"total_matches": 0`, and `"datasets": []`. Scores above are illustrative and **are not probabilities**; their meaning depends on the retrieval method and calibration.
-
-**First-prompt UI requirements:**
-
-- Show the full set of qualifying results, not a single recommended dataset and not only a hidden list of alternatives.
-- Provide each result's **name, description, and clickable verified link**, plus a control for selecting it.
-- Display the number of matches and their source PSI investigation identifiers where available.
-- Allow ranking, pagination, and filtering without discarding the underlying result set.
-- Clearly distinguish **PSI investigation landing-page URLs** from **direct numerical dataset download URLs**.
-- Keep the original downstream behavior: selecting a result enables the LLM summary and numerical column-based visualization.
-
-**Deliverables:**
-
-- Bounded metadata catalog and ingestion/indexing pipeline for the 26 selected PSI investigations.
-- Numerical-dataset eligibility and URL validation rules.
-- Embedding service and vector index.
-- `POST /api/v1/search` returning a JSON array of **all** qualifying matches.
-- Results UI showing all names, descriptions, and links after the first prompt.
-- Validated JSON schema, deduplication, pagination, and no-match handling.
-- Relevance tests using combustion-science evaluation queries.
-
-**Acceptance criteria:**
-
-- Search results originate exclusively from the 26 selected NASA PSI Combustion Science investigations.
-- All returned datasets have verifiable numerical content; textual metadata is permitted only for discovery and explanation.
-- **Every qualifying result** is included in the JSON array and accessible in the UI, with name, description, and valid URL.
-- `total_matches` equals the number of returned distinct datasets, regardless of UI pagination.
-- No result URL is fabricated; all references are traceable to source metadata and comply with access policies.
-- When no eligible dataset is found, the API returns an empty list and communicates the reason without inventing alternatives.
-- Selecting a dataset passes its `dataset.id` into the existing summarization and visualization flows.
-
-### Phase 2 — LLM-Based Summarization
-
-**Objective:** provide users with a concise, useful explanation of the selected dataset.
-
-**Workflow:**
-
-1. Receive the `dataset.id` from Phase 1.
-2. Retrieve metadata (description, temporal/geographic coverage, variables, provenance, update frequency, and limitations).
-3. If the source is accessible, compute a reproducible profile: row count, columns, missing values, ranges, and relevant statistics.
-4. Supply only these verifiable facts to the LLM to generate a summary.
-5. Return the text with source references and warnings about missing information.
-
-**Expected output:** title, executive description, relevant variables, coverage, findings supported by calculations, and limitations. If only the URL is available, generate a **descriptive summary**, not fabricated statistical conclusions.
-
-**Deliverables:** `POST /api/v1/datasets/{id}/summary` service, prompt template, factual-content validation, and source traceability.
-
-**Acceptance criteria:** the summary clearly distinguishes metadata, computed statistics, and unavailable information; it never attributes unsupported figures to the dataset.
-
-### Phase 3 — Interactive Chart Builder
-
-**Objective:** select variables from the retrieved dataset and create exploratory charts.
-
-**Workflow:**
-
-1. Receive the same `dataset.id` generated in Phase 1.
-2. Access the dataset through a validated connector.
-3. Detect its schema, column names, and types (`numeric`, `categorical`, `datetime`, etc.).
-4. Display column selectors for the X-axis, Y-axis, grouping, and filters.
-5. Validate compatibility between data types and chart types.
-6. Render the chart and allow users to adjust parameters without repeating the search.
-
-**Initial chart types:** bar, line, scatter, and histogram; expand based on use cases.
-
-**Deliverables:** `GET /api/v1/datasets/{id}/schema` API, `POST /api/v1/charts/preview` API, column selection controls, and charts with loading/error states.
-
-**Acceptance criteria:** displayed columns belong to the selected dataset; charts are computed from real data; missing values, high cardinality, pagination, and size limits are handled.
-
-### Phase 4 — Web Application and Integration
-
-**Objective:** combine the previous phases into a consistent user experience.
-
-**Interface sections:**
-
-- **Home:** search bar and example questions.
-- **Results:** all matching numerical datasets, each with name, description, URL, similarity, and provenance; selectable for the next steps.
-- **Summary:** LLM-generated description with limitations and sources.
-- **Explorer:** data preview, schema, selectors, filters, and charts.
-- **Dashboard:** layout of selected visualizations and interactive controls.
-
-**Required states:** search in progress, no matches, unavailable source, data-reading error, summary pending, and invalid chart.
-
-**Deliverables:** responsive frontend, API integration, state management, end-to-end tests, deployment, and user documentation.
-
-**Acceptance criteria:** a user can move from a question to a dataset, review its summary, and generate at least one chart without leaving the application.
-
-## 4. Proposed Data Contracts and Endpoints
-
-| Method | Route | Purpose |
-|---|---|---|
-| `POST` | `/api/v1/search` | Classify, vectorize, and retrieve all qualifying numerical PSI datasets |
-| `GET` | `/api/v1/datasets/{id}` | Retrieve source metadata |
-| `GET` | `/api/v1/datasets/{id}/schema` | Return columns and data types |
-| `GET` | `/api/v1/datasets/{id}/preview` | Return a bounded sample of records |
-| `POST` | `/api/v1/datasets/{id}/summary` | Generate an evidence-based summary |
-| `POST` | `/api/v1/charts/preview` | Generate the chart specification and/or data |
-
-**Integration principle:** Phase 1 returns multiple items in `datasets[]`; after selection, Phases 2 and 3 use the selected `dataset.id` as a stable reference. The URL is output information and **must not** be accepted as an arbitrary address for the server to download without validation.
-
-## 5. Minimum Catalog Data Model
-
-| Field | Description |
-|---|---|
-| `id` | Unique, stable identifier |
-| `name` | Dataset name |
-| `description` | Descriptive summary for semantic search |
-| `sector` / `tags` | Domain and topical tags |
-| `url` | Authorized resource reference |
-| `format` | CSV, Parquet, API, SQL, etc. |
-| `schema` | Columns, types, descriptions, and units, when available |
-| `source` / `license` | Provenance and usage license |
-| `coverage` | Temporal and geographic scope |
-| `updated_at` | Metadata update timestamp |
-| `access_policy` | Access and permission rules |
-| `embedding` | Vector computed from the descriptive record |
-
-**Indexing:** when metadata is added or updated, recompute its embedding and update the index. Track the embedding model version to support reindexing.
-
-## 6. Suggested Technology Stack (Optional)
-
-| Layer | Proposed option | Rationale |
-|---|---|---|
-| Frontend | Next.js + React + TypeScript | Modular interface and interactive components |
-| Backend | Python + FastAPI | APIs and data science ecosystem |
-| Catalog / vectors | PostgreSQL + pgvector | Metadata and vector similarity in one database |
-| Embeddings | Replaceable multilingual model | Meaning-based retrieval |
-| RAG | Custom implementation or LlamaIndex/LangChain | Retrieval, filtering, and reranking |
-| Summaries | Configurable LLM provider | Model and cost flexibility |
-| Data profiling | Pandas or Polars | Statistics and file reading |
-| Visualizations | Plotly.js or Apache ECharts | Interactive charts |
-| Deployment | Docker Compose | Reproducible MVP environment |
-
-Final technology choices should be validated against source formats, dataset count, data volume, latency requirements, and available resources.
-
-## 7. Suggested Repository Structure
-
-```text
-.
-├── README.md
-├── docs/
-│   ├── architecture.md
-│   ├── api-contracts.md
-│   ├── data-catalog.md
-│   └── decisions/
-├── apps/
-│   └── web/                    # Frontend
-├── services/
-│   ├── api/                    # HTTP orchestration
-│   ├── search/                 # Sector classification, embeddings, RAG
-│   ├── catalog/                # Metadata and connectors
-│   ├── summarizer/             # Profiling + LLM prompts
-│   └── visualization/          # Chart validation and data
-├── packages/
-│   └── contracts/              # JSON schemas / shared types
-├── data/
-│   └── samples/                # Non-sensitive test data
-├── scripts/
-│   └── ingest_catalog.py
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   ├── retrieval_eval/
-│   └── e2e/
-├── infra/
-│   └── docker-compose.yml
-└── .env.example                # Variable names only; no secrets
-```
-
-> This service-based breakdown represents logical responsibilities. For an MVP, these can be implemented as modules within a **modular monolith** and separated later if scale requires it.
-
-## 8. Security, Quality, and Observability
-
-- **Allowlisted data connectors:** prevent SSRF, block unexpected local or private URLs, and never download user-provided URLs directly.
-- **Permissions and secrets:** store credentials in environment variables or a secrets manager; use read-only access where appropriate.
-- **Prompt injection protection:** treat metadata and dataset content as untrusted information, never as instructions for the LLM.
-- **Data controls:** enforce row, memory, and time limits; sanitize previews; respect licenses and privacy policies.
-- **Reproducibility:** record catalog version, embedding model, query, candidates, scores, and the source used for each summary or chart.
-- **Evaluation:** measure `Recall@k` / `MRR` for search, factual faithfulness for summaries, and type correctness for charts.
-- **Operations:** structured logs, latency/error/cost metrics, and data-source availability monitoring.
-
-## 9. Implementation Roadmap
-
-| Milestone | Verifiable outcome | Dependency |
-|---|---|---|
-| M0 — Foundations | Initial catalog, test dataset, and API contracts | None |
-| M1 — Phase 1 | Query → RAG → all matching numerical PSI datasets in JSON and results UI | M0 |
-| M2 — Phase 2 | JSON → profiling → traceable summary | M1 |
-| M3 — Phase 3 | JSON → schema → interactive chart | M1 |
-| M4 — Phase 4 | Integrated web interface and MVP deployment | M2 and M3 |
-
-Phases 2 and 3 can be developed **in parallel** once the Phase 1 contract is stable.
-
-## 10. Next Steps
-
-1. Catalog the 26 selected NASA PSI Combustion Science investigations and verify their available numerical datasets, descriptions, URLs, columns, and permissions.
-2. Specify the **combustion science subtopic classification** taxonomy and design 20–50 evaluation questions.
-3. Decide which formats the MVP will support (for example, CSV and Parquet).
-4. Implement the catalog schema, ingestion, and `POST /api/v1/search`.
-5. Establish the stable `dataset.id` contract for summarization and chart generation.
-6. Build Phases 2 and 3, followed by the integrated web interface.
-
-## 11. Project Status
-
-- [ ] Catalog and test data sources
-- [ ] Phase 1: semantic search + RAG + complete numerical-results JSON and UI
-- [ ] Phase 2: LLM summary with verifiable evidence
-- [ ] Phase 3: column selection and charts
-- [ ] Phase 4: integrated web interface
-- [ ] Testing, documentation, and deployment
+The active application uses **real local NASA PSI data only**. It does not call a synthetic-data endpoint, does not require PostgreSQL in local mode, and does not generate substitute measurements.
 
 ---
 
-## 12. Quick Start: Local NASA PSI Data + RAG
+## 1. What the application does
 
-The general Next.js page now reads `data/psi_databases` directly. It does not require PostgreSQL and does not use `data/synthetic`. CSV, XLSX, and XLS files are exposed through the same search, schema, summary, preview, and chart endpoints.
+- The user describes a research interest, such as *microgravity flame temperature*.
+- The API embeds the question and retrieves matching investigation and file metadata from a local FAISS index.
+- The web page groups matches by investigation (for example, all files under **PSI-20** appear as one card).
+- Initially, the page shows the three most relevant investigations and offers a button to show the rest.
+- Selecting an investigation opens:
+  - its real schema and metadata,
+  - an evidence-based summary,
+  - a chart explorer with a file selector for every data file in that investigation,
+  - a follow-up research conversation.
+- Charts and previews read the actual rows from `data/psi_databases`.
 
-Start the API in an isolated container without starting the database services:
+### Current data
 
-```bash
-docker compose -f infra/docker-compose.yml up --build --no-deps api
+`data/psi_databases` currently contains:
+
+| Item | Count |
+| --- | ---: |
+| NASA PSI investigation directories | 26 |
+| Investigation metadata files | 26 |
+| Data files | 34 |
+| CSV files | 28 |
+| XLSX files | 5 |
+| XLS files | 1 |
+| Investigations that currently include data files | 10 |
+
+The other investigations are represented by metadata for retrieval, but have no local data file and therefore no chartable dataset.
+
+`data/synthetic` and the synthetic ingestion scripts are legacy artifacts. They are not used by the active local-data page or API routes.
+
+---
+
+## 2. Architecture
+
+```mermaid
+flowchart LR
+    U[Browser] --> W[Next.js web app]
+    W -->|/api/v1/* runtime proxy| A[FastAPI API]
+    A --> C[LocalPSICatalog]
+    A --> R[PSIDataRAG]
+    C --> D[(data/psi_databases\nCSV · XLSX · XLS)]
+    R --> D
+    R --> F[(FAISS index + metadata cache)]
+    R --> E[sentence-transformers\nall-mpnet-base-v2]
+    A -->|optional| L[OpenAI-compatible LLM]
+    A --> V[Vega-oriented chart data]
+    W --> V
 ```
 
-In another terminal, start the repository's general web page:
+### Components
+
+| Component | Location | Responsibility |
+| --- | --- | --- |
+| Web frontend | `apps/web` | Next.js 14 interface, grouped search results, Markdown summaries, chart explorer, chat |
+| API | `services/api` | FastAPI routes, request logging, rate limiting, summary orchestration |
+| Local catalog | `services/search/src/rag/local_catalog.py` | Read-only scanning of `data/psi_databases`, schema inference, previews, chart rows |
+| Local RAG | `services/search/src/rag/psi_data_rag.py` | FAISS retrieval and semantic search over investigation/file documents |
+| Embeddings | `sentence-transformers/all-mpnet-base-v2` | Local query and corpus embeddings |
+| LLM | configurable | Optional summary generation and cited chat answers |
+| Contracts | `packages/contracts` | Shared schemas and types |
+| Infrastructure | `infra` | Dockerfiles and Compose definition |
+
+### Runtime data flow
+
+1. `LocalPSICatalog` scans `PSI-*/metadata.json` and supported data files.
+2. `PSIDataRAG` creates or loads a FAISS index in the `rag_cache` volume.
+3. `POST /api/v1/search` retrieves distinct local datasets with numeric columns.
+4. The frontend groups those datasets by `psiId`.
+5. Dataset, schema, preview, summary, chart, and chat requests all reference the same stable local dataset ID.
+
+---
+
+## 3. Repository layout
+
+```text
+.
+├── apps/web/                     # Next.js frontend
+│   ├── app/page.tsx              # Main research workspace
+│   ├── app/dataset-chart-explorer.tsx
+│   ├── app/api/v1/[...path]/     # Runtime API proxy
+│   └── app/api/site-images/
+├── services/api/                 # FastAPI application and tests
+├── services/search/              # Local catalog, embeddings, and RAG
+├── packages/contracts/           # Shared schemas and types
+├── infra/
+│   ├── Dockerfile.api
+│   ├── Dockerfile.web
+│   ├── docker-compose.yml
+│   └── init-db/                  # Legacy database-mode schema
+├── data/psi_databases/           # Real local NASA PSI files
+├── scripts/                      # Setup, legacy, and verification scripts
+├── .env.example                  # Non-secret configuration template
+└── README.md
+```
+
+Additional service folders under `services/` contain legacy database-mode modules. They are not required for the active local-data workflow.
+
+---
+
+## 4. Quick start
+
+### Requirements
+
+- Docker and Docker Compose
+- Node.js 20 or newer
+- npm 10 or newer
+- Approximately 4 GB memory available to the API container for the first FAISS index build
+
+### 1. Configure the environment
+
+```bash
+cp .env.example .env
+```
+
+For an LLM-backed summary and chat, set an OpenAI-compatible provider in `.env`. A Groq example:
+
+```bash
+LLM_PROVIDER=groq
+LLM_API_KEY=gsk_your_key
+LLM_API_URL=https://api.groq.com/openai/v1
+LLM_MODEL=qwen/qwen3.8-27b
+```
+
+Leave `LLM_API_KEY` empty to use retrieval-only answers. The application remains functional without an LLM key.
+
+Never commit `.env`. It is ignored by Git and must contain real secrets only on your machine or in a secret store.
+
+### 2. Start the API
+
+Local mode does not need PostgreSQL, Redis, or the external embedding service. Start only the API container:
+
+```bash
+docker compose --env-file .env -f infra/docker-compose.yml \
+  up -d --build --no-deps api
+```
+
+The API is available at:
+
+```text
+http://localhost:8000/api/v1
+```
+
+The first semantic search, summary, or chat request may need to download the embedding model and build the FAISS index. This can take several minutes. The index is persisted in the `rag_cache` Docker volume and reused when local files and the embedding model do not change.
+
+### 3. Start the web app
+
+For development:
 
 ```bash
 npm ci
-npm run dev:web
+API_BACKEND_URL=http://127.0.0.1:8000 npm run dev:web
 ```
 
-Open `http://localhost:3000`. The first search or chat request builds the FAISS index with `sentence-transformers/all-mpnet-base-v2`; downloading the embedding model can take several minutes. The index is retained in the `rag_cache` Docker volume and rebuilt when local PSI files change.
+Open:
 
-### RAG chat with an optional LLM
+```text
+http://localhost:3000
+```
 
-The chat endpoint always retrieves from the local FAISS index first. Then:
+### 4. Optional: run both services as containers
 
-1. It builds a system prompt containing the selected dataset's name, PSI ID, compact summary, and key variables as `[S]`, plus the top `NASA_RAG_TOP_K` PSI metadata/file chunks and their cosine scores.
-2. It asks the LLM to use **only** that context, cite selected-dataset facts as `[S]`, cite retrieved facts as `[1]`, `[2]`, etc., and never invent measurements or file contents.
-3. It appends an explicit `Local NASA PSI sources:` list to the answer.
+The web image is a standalone Next.js production image and proxies `/api/v1/*` to `API_BACKEND_URL` at runtime.
 
-The chart explorer also reads real rows from `GET /api/v1/datasets/{id}/preview`; the page no longer calls any synthetic-data endpoint.
+```bash
+docker compose --env-file .env -f infra/docker-compose.yml \
+  up -d --build --no-deps api
 
-Without `LLM_API_KEY`, the endpoint returns the cited retrieval itself instead of inventing a response. If the LLM provider fails, the endpoint also falls back to the cited retrieval instead of failing the chat.
+docker compose --env-file .env -f infra/docker-compose.yml \
+  up -d --build --no-deps web
+```
 
-Configure any OpenAI-compatible provider in `.env`:
+The Compose web service uses `API_BACKEND_URL=http://api:8000`.
 
-| Variable | Purpose | Example |
+Do not run `npm run build --workspace @enigma-sac/web` while the development server is still using `apps/web/.next`; stop the development server first.
+
+---
+
+## 5. API reference (local mode)
+
+All routes are mounted under `/api/v1`. The web frontend reaches them through its runtime proxy at `/api/v1/*`.
+
+| Method | Route | Purpose |
 | --- | --- | --- |
-| `LLM_API_KEY` | Provider key; empty means retrieval-only | `gsk_...` |
-| `LLM_API_URL` | OpenAI-compatible base URL | `https://api.groq.com/openai/v1` |
-| `LLM_MODEL` | Chat model used when the request omits `model` | `qwen/qwen3.8-27b` |
-| `LLM_MAX_TOKENS` | Maximum answer length | `1000` |
-| `LLM_TEMPERATURE` | Lower is more factual | `0.1` |
-| `NASA_RAG_TOP_K` | Retrieved chunks sent to the LLM | `5` |
+| `GET` | `/health` | Local catalog and RAG status |
+| `GET` | `/health/ready` | Readiness probe |
+| `GET` | `/health/live` | Liveness probe |
+| `POST` | `/search` | Semantic search over local PSI files |
+| `GET` | `/datasets/{datasetId}` | Public metadata and numeric columns |
+| `GET` | `/datasets/{datasetId}/schema` | Inferred columns, types, and sampled statistics |
+| `GET` | `/datasets/{datasetId}/preview` | Bounded real-row preview |
+| `POST` | `/datasets/{datasetId}/summary` | Experiment-aware evidence summary |
+| `POST` | `/charts/preview` | Validated chart data and chart specification |
+| `POST` | `/chat/completions` | Cited local RAG chat, optionally LLM-backed |
+| `GET` | `/chat/models` | Configured provider models or local retrieval model |
 
-If the provider enforces a low input-token-per-minute limit, reduce `NASA_RAG_TOP_K` or keep the frontend summary compact. The page already sends only the summary excerpt and key variables, not the full summary JSON.
-
-Provider examples:
-
-```bash
-# OpenAI
-LLM_API_KEY=sk-...
-LLM_API_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-4o-mini
-
-# Groq
-LLM_API_KEY=gsk_...
-LLM_API_URL=https://api.groq.com/openai/v1
-LLM_MODEL=qwen/qwen3.8-27b
-
-# NVIDIA
-LLM_API_KEY=nvapi-...
-LLM_API_URL=https://integrate.api.nvidia.com/v1
-LLM_MODEL=meta/llama-3.1-70b-instruct
-
-# Local Ollama (OpenAI-compatible endpoint)
-LLM_API_KEY=ollama
-LLM_API_URL=http://localhost:11434/v1
-LLM_MODEL=llama3.1
-```
-
-After editing `.env`, recreate the API so Compose passes the new values:
+### Example: search
 
 ```bash
-docker compose --env-file .env -f infra/docker-compose.yml up -d --no-deps --force-recreate api
+curl -X POST http://localhost:8000/api/v1/search \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "query": "microgravity flame temperature and oxygen measurements",
+    "options": {"maxResults": 100}
+  }'
 ```
 
-Never commit a real `.env` or API key. `.env.example` must contain placeholders only.
+### Example: preview a real file
 
-Test the grounded chat directly:
+```bash
+curl 'http://localhost:8000/api/v1/datasets/psi-47-daft-flight-data-gmt053-xls/preview?limit=10'
+```
+
+### Example: chat
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{
     "messages": [
-      {"role": "user", "content": "Which local datasets measure flame temperature in microgravity?"}
+      {
+        "role": "user",
+        "content": "Which local datasets measure flame temperature in microgravity?"
+      }
     ]
   }'
 ```
 
-With an LLM configured, the response uses `settings.LLM_MODEL` unless the request includes a `model` field. `GET /api/v1/chat/models` lists provider models when a key is configured.
+---
 
-Useful read-only checks:
+## 6. Summaries and RAG behavior
 
-```bash
-curl http://localhost:8000/api/v1/health
-curl -X POST http://localhost:3000/api/v1/search \
-  -H 'Content-Type: application/json' \
-  -d '{"query":"combustion temperature in microgravity","options":{"maxResults":100}}'
-```
+### Experiment-aware summaries
 
-Set `DATA_SOURCE=database` only to use the legacy database catalog.
+`POST /api/v1/datasets/{id}/summary` combines:
 
-## 13. Legacy Reference: Synthetic Data Pipeline with NVIDIA Embeddings
+1. Investigation metadata: objectives, approach, research area, subarea, and project setting.
+2. The selected file's inferred schema and sampled statistics.
+3. Related local files from the same investigation.
+4. Up to two local FAISS RAG excerpts from that investigation.
 
-The following legacy instructions apply only to `DATA_SOURCE=database` and the optional synthetic-data pipeline. They are not used by the local NASA PSI page described above.
+The prompt asks the LLM to produce:
 
-### Prerequisites
+- the experiment context,
+- what the selected file represents,
+- an executive summary,
+- a table of relevant variables and their likely roles,
+- coverage,
+- at most six concise findings,
+- limitations and warnings.
 
-- Docker and Docker Compose
-- NVIDIA API key from [build.nvidia.com](https://build.nvidia.com/)
-- Python 3.9+ (for local scripts)
+Variable meanings are inferred from column names, values, statistics, and investigation context. The local PSI files do not include a formal variable dictionary or unit metadata, so inferred interpretations are explicitly labeled **Inferred** and the missing dictionary is listed as a limitation.
 
-### 1. Configure Environment
+If the LLM is unavailable or rate-limited, the API falls back to a descriptive Markdown summary that still includes experiment context and the variable-dictionary limitation.
 
-```bash
-# Copy the example environment file
-cp .env.example .env
+### Cited chat
 
-# Edit .env and add your NVIDIA API key
-# Required variables:
-# EMBEDDING_PROVIDER=nvidia
-# EMBEDDING_API_KEY=nvapi_your_key_here
-# EMBEDDING_MODEL=nvidia/nemotron-3.5-embed-1b
-# EMBEDDING_DIMENSIONS=1024
-```
+The chat endpoint retrieves local context before generating an answer.
 
-### 2. Start Infrastructure
-
-```bash
-# Start PostgreSQL with pgvector and Redis
-docker-compose -f infra/docker-compose.yml up -d postgres redis
-
-# Wait for services to be healthy (about 10-15 seconds)
-docker-compose -f infra/docker-compose.yml ps
-```
-
-### 3. Initialize Database Schema
-
-```bash
-# The schema is automatically applied via Docker init scripts
-# Verify tables exist:
-docker exec enigma-sac-postgres psql -U enigma -d enigma_sac -c "\dt"
-```
-
-### 4. Generate Synthetic Data (Optional - already included)
-
-```bash
-# Generate 10 synthetic NASA PSI combustion datasets (~30K rows)
-python scripts/generate_synthetic_data.py
-```
-
-### 5. Ingest Data with NVIDIA Embeddings
-
-```bash
-# Load .env variables and ingest all 10 datasets with embeddings
-export $(cat .env | xargs) && python scripts/ingest_synthetic_data.py
-```
-
-Expected output: `ingestion_complete successful=10 total=10`
-
-### 6. Verify Installation
-
-```bash
-# Check database state
-python scripts/check_database.py
-
-# Test NVIDIA embedding provider
-python scripts/test_nvidia_embedding.py
-
-# Run search validation (20 test queries)
-python scripts/test_search.py
-```
-
-### 7. Expected Results
-
-| Metric | Value |
-|--------|-------|
-| Datasets ingested | 10 |
-| Total rows | ~30,238 |
-| Embedding model | nvidia/nemotron-3.5-embed-1b |
-| Embedding dimensions | 1024 |
-| Search recall | ~90% |
-| Search precision | ~23% |
-
-All 10 datasets should be retrievable via semantic search.
-
-### 8. API Usage
-
-```bash
-# Start the API service (optional, for web integration)
-docker-compose -f infra/docker-compose.yml up -d api
-
-# Search endpoint
-curl -X POST http://localhost:8000/api/v1/search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "combustion temperature measurements in microgravity"}'
-```
-
-### Dataset Details
-
-| Dataset ID | PSI Investigation | Description | Rows |
-|------------|-------------------|-------------|------|
-| `psi-20-bre-temperature-csv` | PSI-20 | BRE Flame Temperature Measurements | 5,000 |
-| `psi-21-cld-soot-csv` | PSI-21 | CLD Flame Soot Volume Fraction Data | 3,000 |
-| `psi-69-flex-droplet-extinction-csv` | PSI-69 | FLEX Droplet Extinction Measurements | 4,000 |
-| `psi-39-cfi-cool-flame-csv` | PSI-39 | CFI Cool Flame Droplet Temperature Data | 3,500 |
-| `psi-107-spice-smoke-point-csv` | PSI-107 | SPICE Smoke Point and Flame Length Data | 1,440 |
-| `psi-26-bass-solid-flame-spread-csv` | PSI-26 | BASS Solid Fuel Flame Spread Rates | 2,500 |
-| `psi-102-same-smoke-aerosol-csv` | PSI-102 | SAME Smoke Aerosol Size Distribution Data | 1,998 |
-| `psi-98-saffire-i-fabric-burn-csv` | PSI-98 | SAFFIRE-I Large Fabric Burn Sensor Data | 5,000 |
-| `psi-159-cfig-gaseous-cool-flame-csv` | PSI-159 | CFI-G Gaseous Cool Flame Temperature Data | 3,000 |
-| `psi-106-slice-liftoff-csv` | PSI-106 | SLICE Flame Liftoff and Structure Data | 800 |
-
-### Switching Embedding Providers
-
-The system supports multiple embedding providers via `EMBEDDING_PROVIDER`:
-
-```bash
-# NVIDIA (current)
-EMBEDDING_PROVIDER=nvidia
-EMBEDDING_MODEL=nvidia/nemotron-3.5-embed-1b
-EMBEDDING_DIMENSIONS=1024
-
-# Local (sentence-transformers)
-EMBEDDING_PROVIDER=local
-EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
-EMBEDDING_DIMENSIONS=384
-
-# OpenAI
-EMBEDDING_PROVIDER=openai
-EMBEDDING_API_KEY=sk-your-key
-EMBEDDING_MODEL=text-embedding-3-small
-EMBEDDING_DIMENSIONS=1536
-
-# Remote HTTP endpoint
-EMBEDDING_PROVIDER=remote
-EMBEDDING_API_URL=http://your-embedding-service:8080/embed
-```
-
-### Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| "Model not found" / 410 Gone | Update `EMBEDDING_MODEL` to a current model (e.g., `nvidia/nemotron-3.5-embed-1b`) |
-| "input_type parameter required" | Set `NVIDIA_INPUT_TYPE=query` in `.env` for asymmetric models |
-| Embedding dimensions mismatch | Ensure `EMBEDDING_DIMENSIONS` matches model output (1024 for nemotron-3.5-embed-1b) |
-| Database connection failed | Verify PostgreSQL is running: `docker-compose ps` |
-| Vector type error | Ensure pgvector extension is installed: `CREATE EXTENSION vector;` |
+- Selected dataset/application context is cited as `[S]`.
+- Retrieved local context is cited as `[1]`, `[2]`, etc.
+- Every answer ends with a `Local NASA PSI sources:` list.
+- If no LLM is configured or the provider fails, the endpoint returns the cited retrieval instead of fabricating an answer.
 
 ---
 
-**Note:** Names, API routes, JSON values, tools, and example URLs are initial proposals subject to validation during technical design.
+## 7. Configuration
+
+Important variables from `.env.example`:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DATA_SOURCE` | `local` | `local` uses real PSI files; `database` selects the legacy catalog |
+| `PSI_DATA_DIR` | `data/psi_databases` | Local data directory on the host |
+| `NASA_RAG_EMBEDDING_MODEL` | `sentence-transformers/all-mpnet-base-v2` | Local RAG embedding model |
+| `NASA_RAG_TOP_K` | `5` | Retrieved chunks passed to chat |
+| `LLM_PROVIDER` | `openai` | `openai` and `groq` use the OpenAI-compatible client |
+| `LLM_API_KEY` | empty | Optional LLM key; empty means retrieval-only chat |
+| `LLM_API_URL` | `https://api.openai.com/v1` | OpenAI-compatible base URL |
+| `LLM_MODEL` | `gpt-4o-mini` | Default chat/summary model |
+| `LLM_MAX_TOKENS` | `2000` | Maximum response length |
+| `LLM_TEMPERATURE` | `0.1` | Lower values are more factual |
+| `API_BACKEND_URL` | `http://127.0.0.1:8000` | Backend URL used by the web runtime proxy |
+
+In Docker, the API container always uses `/app/data/psi_databases`; the host path is mounted read-only by Compose.
+
+Groq's free tier can enforce low input-token-per-minute limits. If summary requests fall back because of rate limits, reduce `NASA_RAG_TOP_K`, use a shorter summary, or wait for the provider window to reset.
+
+---
+
+## 8. Testing and verification
+
+### Backend tests
+
+The API image does not include test-only dependencies by default. Run the current local-data regression tests inside the running API container with a temporary pytest install:
+
+```bash
+docker exec enigma-sac-api sh -c '
+  pip install -q --target /tmp/pytest pytest==8.3.5 >/dev/null 2>&1;
+  PYTHONPATH=/tmp/pytest python -m pytest -q \
+    services/search/tests/test_local_catalog.py \
+    services/api/tests/test_search_regression.py \
+    services/api/tests/test_summary_markdown.py
+'
+```
+
+The current core suite covers:
+
+- real CSV preview, schema, and chart rows,
+- Windows-1252 and mixed-value handling,
+- investigations with metadata but no files,
+- local search and chat route integration,
+- RAG prompt grounding and citations,
+- LLM fallback behavior,
+- Markdown summary preservation,
+- experiment context and variable-limitation reporting.
+
+### Frontend checks
+
+```bash
+npx tsc --noEmit -p apps/web/tsconfig.json
+```
+
+For a production build, stop the development server first:
+
+```bash
+npm run build --workspace @enigma-sac/web
+```
+
+### Smoke tests
+
+```bash
+curl http://localhost:8000/api/v1/health
+
+curl -X POST http://localhost:3000/api/v1/search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"microgravity flame temperature","options":{"maxResults":5}}'
+
+curl 'http://localhost:3000/api/v1/datasets/psi-47-daft-flight-data-gmt053-xls/preview?limit=3'
+```
+
+---
+
+## 9. Deployment recommendation for Azure
+
+The recommended production target is **Azure Container Apps**.
+
+### Why Container Apps
+
+- The application is naturally two containers: a stateless Next.js web app and a stateful local-data API.
+- Container Apps supports multiple applications in one environment, internal ingress for the API, and public HTTPS ingress for the web app.
+- It supports secrets, health probes, custom domains, managed identity, and GitHub Actions deployment.
+- The API needs enough memory for the FAISS index and can be kept warm with a minimum replica count.
+
+### Recommended Azure setup
+
+| Azure resource | Purpose |
+| --- | --- |
+| Azure Container Registry | Store versioned `enigma-sac-api` and `enigma-sac-web` images |
+| Container Apps environment | Shared virtual network and internal service discovery |
+| Container App: `api` | FastAPI, internal ingress, 4 GiB memory, 1–2 vCPU |
+| Container App: `web` | Next.js standalone server, public ingress, 1 GiB memory |
+| Azure Files share: `psi-data` | Mounted read-only at `/app/data/psi_databases` |
+| Azure Files share: `rag-cache` | Persistent FAISS/Hugging Face cache at `/app/services/search/src/rag/.cache` |
+| Key Vault or Container Apps secrets | `LLM_API_KEY` and other secrets |
+| Managed identity | ACR image pull and Key Vault access without stored credentials |
+| GitHub Actions | Build, test, push images, and deploy revisions |
+
+### Deployment notes
+
+- Set `DATA_SOURCE=local`.
+- Set `API_BACKEND_URL` to the API's internal Container Apps URL.
+- Keep the API minimum replica count at one to avoid cold starts and repeated index loading.
+- Mount the same `rag-cache` Azure Files share on every API replica so the FAISS index is built once and reused.
+- Use `/api/v1/health/live` for liveness and `/api/v1/health/ready` for readiness.
+- The health endpoint reports the RAG index as lazy; the first search or chat request after a cold start may still take time to load it.
+- Do not put the LLM key in image metadata or Git. Use Key Vault references or Container Apps secrets.
+- Azure App Service for Containers is a simpler alternative, but Container Apps is a better fit for this two-service, volume-backed architecture.
+
+---
+
+## 10. Security and data-integrity rules
+
+- Local NASA PSI data is mounted read-only in Compose.
+- The active local routes never write to source files.
+- Previews and charts are bounded by row and memory limits.
+- LLM prompts must use provided metadata, statistics, and retrieved context only.
+- Summaries and chats must not invent measurements, units, rows, or file contents.
+- Variable interpretations without a source dictionary must be labeled as inferred.
+- Real API keys belong only in `.env` locally or in a managed secret store.
+- `.env`, `.env.*`, build outputs, caches, and dependencies are excluded from Git and Docker build context.
+
+---
+
+## 11. Known limitations
+
+- The local PSI files do not include a formal variable dictionary or unit metadata.
+- Only 10 of the 26 investigations currently include local data files.
+- Schema types and statistics are inferred from bounded samples, not a externally certified data profile.
+- The first FAISS build downloads an embedding model and can take several minutes.
+- External LLM providers may rate-limit requests; the API falls back to local descriptive/cited behavior.
+- The legacy database and synthetic pipeline is not part of the active local workflow and is not maintained as the primary path.

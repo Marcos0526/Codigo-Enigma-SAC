@@ -199,6 +199,8 @@ async def generate_local_summary(dataset_id: str, request: SummaryRequest) -> Su
     try:
         dataset = get_catalog().public_dataset(dataset_id)
         schema = get_catalog().get_schema(dataset_id)
+        investigation = get_catalog().get_investigation(dataset["psiId"])
+        source_file = get_catalog().get_dataset(dataset_id)["_path"].name
     except (FileNotFoundError, OSError, ValueError) as exc:
         raise _not_found(dataset_id) from exc
 
@@ -208,9 +210,78 @@ async def generate_local_summary(dataset_id: str, request: SummaryRequest) -> Su
         "profile_version": schema["profileVersion"],
     }
     facts = build_verifiable_facts(dataset, schema["columns"], profile)
+    facts["experiment_context"] = {
+        "research_area": investigation.get("research_area"),
+        "subresearch_area": investigation.get("subresearch_area"),
+        "scientific_focus": investigation.get("scientific_focus"),
+        "project_setting": investigation.get("project_setting"),
+        "objectives": investigation.get("objectives"),
+        "approach": investigation.get("approach"),
+        "doi": investigation.get("doi"),
+    }
+    facts["dataset_context"] = {
+        "source_file": source_file,
+        "file_format": dataset.get("format"),
+        "row_count": schema["rowCount"],
+        "column_count": len(schema["columns"]),
+        "related_files": [
+            {"name": item["name"], "format": item["format"]}
+            for item in get_catalog().list_datasets()
+            if item["psi_id"] == dataset["psiId"]
+        ],
+        "available_evidence": [
+            "NASA PSI investigation metadata",
+            "local file schema and inferred column types",
+            "sampled column statistics",
+            "local FAISS RAG excerpts",
+        ],
+    }
+
+    # Ground the summary in the same local RAG index used by the assistant. The
+    # excerpts contain the investigation record and this file's schema, but not a
+    # formal variable dictionary, so the prompt must mark interpretations.
+    retrieval_query = " ".join(
+        part
+        for part in (
+            dataset["psiId"],
+            investigation.get("title", ""),
+            dataset.get("name", ""),
+            source_file,
+            investigation.get("objectives", ""),
+            investigation.get("approach", ""),
+        )
+        if part
+    )
+    try:
+        retrieved = await asyncio.to_thread(
+            get_rag().retrieve, retrieval_query, settings.NASA_RAG_TOP_K
+        )
+        facts["local_rag_context"] = [
+            {
+                "source": match["metadata"].get("source", "NASA PSI metadata"),
+                "cosine": round(float(match["score"]), 3),
+                "excerpt": match["content"][:800],
+            }
+            for match in retrieved
+            if match["metadata"].get("psi_id") == dataset["psiId"]
+        ][:2]
+    except (ImportError, ModuleNotFoundError, OSError, ValueError) as exc:
+        logger.warning("summary_rag_unavailable", dataset_id=dataset_id, error=str(exc))
+        facts["local_rag_context"] = []
+
     try:
         summary_text = await generate_llm_summary(facts, request.options or {})
-    except Exception:
+    except Exception as exc:
+        response_body = ""
+        response = getattr(exc, "response", None)
+        if response is not None:
+            response_body = getattr(response, "text", "")[:600]
+        logger.warning(
+            "local_llm_summary_failed_falling_back",
+            dataset_id=dataset_id,
+            error=str(exc),
+            provider_response=response_body,
+        )
         from services.api.src.routes.summarization import generate_descriptive_summary
 
         summary_text = generate_descriptive_summary(facts)

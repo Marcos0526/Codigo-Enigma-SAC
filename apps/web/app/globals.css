@@ -155,13 +155,13 @@ label:focus-within {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 26px;
+  gap: 18px;
   background:
     radial-gradient(ellipse at 85% 60%, #41141f80, transparent 65%), #151012;
   border: 1px solid #3c242c;
   border-radius: 12px;
   overflow: hidden;
-  padding: 64px 54px 48px;
+  padding: 48px 50px 36px;
   background-size: cover;
   background-position: center;
 }
@@ -197,10 +197,10 @@ label:focus-within {
   box-shadow: 0 0 12px #f34b5b38;
 }
 h1 {
-  font-size: clamp(38px, 4.7vw, 65px);
-  line-height: 1.07;
-  letter-spacing: -0.055em;
-  margin: 30px 0 0;
+  font-size: clamp(34px, 4.2vw, 56px);
+  line-height: 1.08;
+  letter-spacing: -0.05em;
+  margin: 20px 0 0;
   font-weight: 500;
 }
 h1 > span {
@@ -208,15 +208,15 @@ h1 > span {
 }
 .hero-copy {
   color: #ece1e6;
-  font-size: 17px;
-  line-height: 1.65;
+  font-size: 16px;
+  line-height: 1.6;
   max-width: 550px;
-  margin: 26px 0 14px;
+  margin: 18px 0 12px;
 }
 .hero-detail {
   color: #b2a3aa;
   font-size: 13px;
-  line-height: 1.85;
+  line-height: 1.75;
   max-width: 525px;
   margin: 0;
 }
@@ -224,7 +224,7 @@ h1 > span {
   display: inline-flex;
   align-items: center;
   gap: 36px;
-  margin-top: 28px;
+  margin-top: 22px;
   color: #f7dce1;
   font-weight: 700;
   font-size: 12px;
@@ -296,7 +296,7 @@ h1 > span {
   margin-top: 8px;
 }
 .section {
-  margin-top: 62px;
+  margin-top: 42px;
 }
 .section-heading {
   align-items: flex-end;
@@ -891,11 +891,11 @@ select {
     padding-inline: 28px;
   }
   .hero {
-    gap: 25px;
-    padding: 44px 32px;
+    gap: 16px;
+    padding: 36px 30px 28px;
   }
   h1 {
-    font-size: 47px;
+    font-size: 42px;
   }
 
   .dataset-overview {
@@ -936,18 +936,18 @@ select {
   }
   .hero {
     grid-template-columns: 1fr;
-    gap: 32px;
-    padding: 35px 25px 28px;
+    gap: 24px;
+    padding: 28px 22px 24px;
   }
   .hero .eyebrow {
     font-size: 8px;
   }
   h1 {
-    font-size: clamp(35px, 7.5vw, 48px);
-    margin-top: 22px;
+    font-size: clamp(30px, 7vw, 40px);
+    margin-top: 16px;
   }
   .hero-copy {
-    font-size: 15px;
+    font-size: 14px;
   }
   .hero-detail {
     font-size: 12px;

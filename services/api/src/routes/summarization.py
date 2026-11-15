@@ -189,7 +189,7 @@ def build_verifiable_facts(dataset, columns, profile) -> dict:
 
 async def generate_llm_summary(facts: dict, options: dict) -> str:
     """Generate summary using LLM with verifiable facts only."""
-    if settings.LLM_PROVIDER == "openai" and settings.LLM_API_KEY:
+    if settings.LLM_PROVIDER in {"openai", "groq"} and settings.LLM_API_KEY:
         return await generate_openai_summary(facts, options)
     elif settings.LLM_PROVIDER == "anthropic" and settings.LLM_API_KEY:
         return await generate_anthropic_summary(facts, options)
@@ -210,33 +210,36 @@ async def generate_openai_summary(facts: dict, options: dict) -> str:
 
     max_length = options.get("maxLength", 1000)
 
-    system_prompt = """You are a scientific data analyst. Generate a concise, evidence-based summary of a dataset using ONLY the provided verifiable facts. 
+    system_prompt = """You are a scientific data analyst. Generate a concise, evidence-based summary of a dataset using ONLY the provided verifiable facts and local context.
 
 CRITICAL RULES:
-1. NEVER invent statistics, numbers, or findings not explicitly provided in the facts
-2. NEVER make claims beyond what the data supports
-3. Clearly distinguish between metadata (descriptions, tags) and computed statistics
-4. If statistics are not available, state this explicitly
-5. Include source references for every claim
-6. List limitations and warnings about unavailable information
+1. NEVER invent statistics, numbers, units, instruments, or findings not explicitly provided in the facts or context
+2. NEVER make claims beyond what the evidence supports
+3. Clearly distinguish investigation metadata, computed statistics, and interpretations inferred from column names
+4. If a variable meaning or unit is not explicit, label the interpretation as "Inferred" and say that no formal data dictionary is available
+5. If statistics are not available, state this explicitly
+6. Include source references for every factual claim
+7. List limitations and warnings about unavailable information
 
-Format your response as structured text with clear sections."""
+Format your response as structured Markdown."""
 
-    user_prompt = f"""Dataset Facts (VERIFIED - DO NOT INVENT ADDITIONAL INFORMATION):
+    user_prompt = f"""Dataset Facts and Local Context (VERIFIED - DO NOT INVENT ADDITIONAL INFORMATION):
 
-{json.dumps(facts, indent=2, default=str)}
+{json.dumps(facts, separators=(",", ":"), default=str)}
 
 Write the complete response in English Markdown. Use headings, paragraphs, bullet lists, and tables where appropriate. Do not wrap the response in a code fence.
 
 Generate a summary with:
 1. Title
-2. Executive Summary (2-3 sentences)
-3. Key Variables
-4. Coverage (temporal, geographic, row count)
-5. Findings (each with description, evidence, source)
-6. Limitations
-7. Warnings
-8. Sources"""
+2. Experiment context: what experiment or investigation produced this dataset, where it ran, its objective, and its approach
+3. What this dataset represents: the source file, its likely observation unit, and what the rows/measurements mean; explicitly state uncertainty when the observation unit is not documented
+4. Executive Summary (2-3 sentences)
+5. Key variables and interpretation: use a table with Variable, Likely role, and Meaning/evidence. Select at most 10 scientifically relevant variables. Classify roles as experimental condition, response/measurement, time/index, or engineering/housekeeping when the evidence supports it. Mark inferred meanings as "Inferred"
+6. Coverage (research area, project setting, row count, column count)
+7. Findings (at most 6 concise bullets, each with description, evidence, source)
+8. Limitations (explicitly mention missing variable dictionary or units when applicable)
+9. Warnings
+10. Sources"""
 
     # Use custom API URL if provided (for Groq, Together, etc.), otherwise default to OpenAI
     # Ensure the URL ends with /chat/completions
@@ -481,14 +484,62 @@ def generate_descriptive_summary(facts: dict) -> str:
         f"({facts.get('investigation_title', 'Unknown')}) contains {len(numeric_cols)} numerical columns "
         f"and {len(cat_cols)} categorical columns across {row_count or 'unknown'} rows. "
         f"Data format: {facts['format']}. Access: {facts['access_policy']}. Verification status: {facts['verification_status']}.",
-        "",
-        "## Key variables\n\n" + (", ".join([c["name"] for c in numeric_cols + cat_cols]) or "None"),
-        "",
-        f"## Coverage\n\nTemporal: {facts.get('tags', ['Unknown'])[0] if facts.get('tags') else 'Unknown'}, "
-        f"Rows: {row_count if row_count else 'Unknown'}",
-        "",
-        "## Findings",
     ]
+
+    experiment = facts.get("experiment_context") or {}
+    if experiment:
+        lines.extend(
+            [
+                "",
+                "## Experiment context",
+                f"- Investigation: {facts['psi_id']} — {facts.get('investigation_title', 'Unknown')}",
+                f"- Research area: {experiment.get('research_area', 'Unknown')}"
+                + (
+                    f" / {experiment['subresearch_area']}"
+                    if experiment.get("subresearch_area")
+                    else ""
+                ),
+                f"- Scientific focus: {experiment.get('scientific_focus', 'Unknown')}",
+                f"- Setting: {experiment.get('project_setting', 'Unknown')}",
+                f"- Objective: {experiment.get('objectives', 'Unknown')}",
+                f"- Approach: {experiment.get('approach', 'Unknown')}",
+            ]
+        )
+
+    dataset_context = facts.get("dataset_context") or {}
+    if dataset_context:
+        related = ", ".join(
+            f"{item.get('name')} ({item.get('format', '').upper()})"
+            for item in dataset_context.get("related_files", [])
+        )
+        lines.extend(
+            [
+                "",
+                "## What this dataset represents",
+                f"- Source file: {dataset_context.get('source_file', facts['dataset_id'])}",
+                f"- Rows: {dataset_context.get('row_count', row_count or 'unknown')}",
+                f"- Columns: {dataset_context.get('column_count', len(numeric_cols) + len(cat_cols))}",
+                f"- Related files in this investigation: {related or 'Unknown'}",
+                "- Observation unit: not documented in the local metadata; interpretations must be verified against the source documentation.",
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Key variables\n\n"
+            + (", ".join([c["name"] for c in numeric_cols + cat_cols]) or "None"),
+            "",
+            "## Variable interpretation",
+            "- No formal variable dictionary or unit metadata is available in the local files.",
+            "- Meanings can only be inferred from column names, sample values, statistics, and the investigation context; verify inferred meanings with the NASA PSI source documentation.",
+            "",
+            f"## Coverage\n\nResearch area: {facts.get('tags', ['Unknown'])[0] if facts.get('tags') else 'Unknown'}, "
+            f"Rows: {row_count if row_count else 'Unknown'}",
+            "",
+            "## Findings",
+        ]
+    )
 
     for col in numeric_cols:
         stats_raw = col.get("statistics")

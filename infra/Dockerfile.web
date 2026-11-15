@@ -2,50 +2,44 @@
 # Enigma SAC Web Frontend - Dockerfile
 # ============================================================================
 
-FROM node:20-alpine AS base
-
-# Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
+FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 
-COPY apps/web/package.json apps/web/package-lock.json* ./
+# Install the root workspace and its lockfile dependencies. The root dev
+# dependencies include TypeScript, which Next.js needs during `next build`.
+COPY package.json package-lock.json ./
+COPY apps/web/package.json apps/web/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
 RUN npm ci
 
-# Rebuild the source code only when needed
-FROM base AS builder
+FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json ./
 COPY apps/web/ ./apps/web/
 COPY packages/contracts/ ./packages/contracts/
-COPY data/synthetic/ ./data/synthetic/
+RUN npm run build --workspace @enigma-sac/web
 
-# Generate Prisma client if needed
-# RUN npx prisma generate
-
-# Build the application
-RUN npm run build --workspace=apps/web
-
-# Production image, copy all the files and run next
-FROM base AS runner
+FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/apps/web/public ./public
-COPY --from=builder /app/data/synthetic ./data/synthetic
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
+COPY --from=builder /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
 USER nextjs
-
+WORKDIR /app/apps/web
 EXPOSE 3000
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-ENV SYNTHETIC_DATA_DIR=/app/data/synthetic
+# The web server proxies /api/v1/* to this backend. Override it for other
+# hosting environments; the value must be reachable from the web container.
+ENV API_BACKEND_URL=http://api:8000
 
 CMD ["node", "server.js"]

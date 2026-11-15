@@ -405,9 +405,6 @@ export default function HomePage() {
           </div>
         </div>
         <div className="nav-actions">
-          <a className="nav-link" href="#research-search">
-            Explore the catalog <span aria-hidden="true">↗</span>
-          </a>
           <button
             type="button"
             className="theme-toggle"
@@ -432,16 +429,12 @@ export default function HomePage() {
       >
         <div className="visual-coordinates">
           <span>PSI / RESEARCH ARCHIVE</span>
-          <span>01 — DISCOVERY</span>
         </div>
         <div className="hero-content">
-          <p className="eyebrow">
-            <span className="signal-dot" /> NASA PHYSICAL SCIENCES INFORMATICS
-          </p>
           <h1>
-            Your research question.
+            Explore NASA’s flame dataset
             <br />
-            <span>A new connection.</span>
+            <span>in microgravity.</span>
           </h1>
           <p className="hero-copy">
             Connect your research interests with the experimental knowledge
@@ -456,40 +449,8 @@ export default function HomePage() {
           <a className="hero-cta" href="#research-search">
             Begin your investigation <span aria-hidden="true">↘</span>
           </a>
-          <div className="hero-topics">
-            <span>MICROGRAVITY</span>
-            <span>COMBUSTION</span>
-            <span>EXPERIMENTAL DATA</span>
-          </div>
-        </div>
-        <div className="visual-caption">
-          <span className="signal-dot" /> A QUESTION IS WHERE DISCOVERY BEGINS.
         </div>
       </header>
-
-      <div className="research-path" aria-label="Research workflow">
-        <div>
-          <span className="step-number">01</span>
-          <p>
-            <strong>Describe your interest</strong>
-            <span>Start with a research question.</span>
-          </p>
-        </div>
-        <div>
-          <span className="step-number">02</span>
-          <p>
-            <strong>Discover relevant datasets</strong>
-            <span>Review matches by relevance.</span>
-          </p>
-        </div>
-        <div>
-          <span className="step-number">03</span>
-          <p>
-            <strong>Explore the evidence</strong>
-            <span>Visualize, summarize, and discuss.</span>
-          </p>
-        </div>
-      </div>
 
       <section
         className="section search-section"
@@ -758,15 +719,11 @@ export default function HomePage() {
               </details>
               <section
                 className="chat-section summary-chat"
-                aria-labelledby="chat-title"
+                aria-label="Research conversation"
               >
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">03 / RESEARCH CONVERSATION</p>
-                    <h3 id="chat-title">
-                      Take the next question further
-                      <span className="red-period">.</span>
-                    </h3>
                   </div>
                   <span className="tag">Powered by Groq</span>
                 </div>
@@ -790,7 +747,6 @@ export default function HomePage() {
                         >
                           ↗
                         </span>
-                        <h3>Your evidence. Your next question.</h3>
                         <p>
                           The dataset summary is ready. Ask about its findings,
                           experimental context, or limitations.
