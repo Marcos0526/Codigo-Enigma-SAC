@@ -14,8 +14,16 @@ type Dataset = Pick<DatasetOption, "id" | "title"> & {
   rows: Array<Record<string, string | number | null>>;
 };
 
-type ChartType = "line" | "scatter" | "bar" | "histogram" | "area" | "bubble" | "boxplot" | "heatmap";
-type ThemeName = "forest" | "ocean" | "sunset" | "midnight";
+type ChartType =
+  | "line"
+  | "scatter"
+  | "bar"
+  | "histogram"
+  | "area"
+  | "bubble"
+  | "boxplot"
+  | "heatmap";
+type ThemeName = "crimson" | "carbon" | "burgundy" | "monochrome";
 
 type ChartTheme = {
   label: string;
@@ -29,46 +37,46 @@ type ChartTheme = {
 };
 
 const chartThemes: Record<ThemeName, ChartTheme> = {
-  forest: {
-    label: "Forest",
-    accent: "#245c45",
-    palette: ["#245c45", "#85a947", "#e0a23c", "#4d8c88", "#a45b4b", "#6d75a5"],
-    background: "#ffffff",
-    text: "#17211b",
-    grid: "#e8eee8",
-    surface: "#ffffff",
-    dark: false
+  crimson: {
+    label: "Crimson",
+    accent: "#ff525f",
+    palette: ["#ff525f", "#ffb0b5", "#c12c41", "#e1dadd", "#88515b", "#8e8a8c"],
+    background: "#141113",
+    text: "#f1eaed",
+    grid: "#33282c",
+    surface: "#141113",
+    dark: true,
   },
-  ocean: {
-    label: "Ocean",
-    accent: "#176b87",
-    palette: ["#176b87", "#45a4b8", "#78b7a5", "#f0b35b", "#4c6ca5", "#bf6c70"],
-    background: "#f4fbfc",
-    text: "#17323c",
-    grid: "#d8e9ed",
-    surface: "#f4fbfc",
-    dark: false
+  carbon: {
+    label: "Carbon",
+    accent: "#f26571",
+    palette: ["#f26571", "#ded5d8", "#ac394c", "#8e8a8c", "#ffabb3", "#74414b"],
+    background: "#101010",
+    text: "#f1eaed",
+    grid: "#303030",
+    surface: "#101010",
+    dark: true,
   },
-  sunset: {
-    label: "Sunset",
-    accent: "#bd573b",
-    palette: ["#bd573b", "#e08c47", "#e3bd5a", "#8d668c", "#577c9e", "#6f9b75"],
-    background: "#fffaf5",
-    text: "#402c28",
-    grid: "#f0e2d9",
-    surface: "#fffaf5",
-    dark: false
+  burgundy: {
+    label: "Burgundy",
+    accent: "#ff8b97",
+    palette: ["#ff8b97", "#dcd0d5", "#e34b61", "#b17886", "#b22c49", "#8e8a8c"],
+    background: "#1c1015",
+    text: "#f1eaed",
+    grid: "#43232e",
+    surface: "#1c1015",
+    dark: true,
   },
-  midnight: {
-    label: "Midnight",
-    accent: "#60a5fa",
-    palette: ["#60a5fa", "#34d399", "#fbbf24", "#c084fc", "#fb7185", "#22d3ee"],
-    background: "#111827",
-    text: "#e5e7eb",
-    grid: "#344153",
-    surface: "#111827",
-    dark: true
-  }
+  monochrome: {
+    label: "Monochrome",
+    accent: "#ded5d8",
+    palette: ["#f1eaed", "#bcb3b7", "#ff525f", "#8e8a8c", "#ac394c", "#777174"],
+    background: "#141113",
+    text: "#f1eaed",
+    grid: "#33282c",
+    surface: "#141113",
+    dark: true,
+  },
 };
 
 const chartTypes: Array<{ value: ChartType; label: string }> = [
@@ -79,10 +87,16 @@ const chartTypes: Array<{ value: ChartType; label: string }> = [
   { value: "bar", label: "Bar" },
   { value: "histogram", label: "Histogram" },
   { value: "boxplot", label: "Box plot" },
-  { value: "heatmap", label: "Heatmap" }
+  { value: "heatmap", label: "Heatmap" },
 ];
 
-export default function SyntheticChartExplorer({ datasetId }: { datasetId: string }) {
+export default function SyntheticChartExplorer({
+  datasetId,
+  colorMode = "dark",
+}: {
+  datasetId: string;
+  colorMode?: "dark" | "light";
+}) {
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [chartType, setChartType] = useState<ChartType>("scatter");
   const [xAxis, setXAxis] = useState("");
@@ -94,7 +108,7 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
   const [pointSize, setPointSize] = useState(90);
   const [lineWidth, setLineWidth] = useState(2);
   const [opacity, setOpacity] = useState(0.75);
-  const [themeName, setThemeName] = useState<ThemeName>("forest");
+  const [themeName, setThemeName] = useState<ThemeName>("crimson");
   const [chartTitle, setChartTitle] = useState("");
   const [showGrid, setShowGrid] = useState(true);
   const [showLegend, setShowLegend] = useState(true);
@@ -110,35 +124,42 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
     setLoading(true);
     setError("");
     fetch(`/api/synthetic-data?dataset=${encodeURIComponent(datasetId)}`, {
-      signal: controller.signal
+      signal: controller.signal,
     })
       .then(async (response) => {
-        if (!response.ok) throw new Error(`Could not load this dataset (${response.status}).`);
+        if (!response.ok)
+          throw new Error(`Could not load this dataset (${response.status}).`);
         return (await response.json()) as Dataset;
       })
       .then((loadedDataset) => {
         setDataset(loadedDataset);
         const numericColumns = loadedDataset.columns.filter((column) =>
-          loadedDataset.rows.some((row) => typeof row[column] === "number")
+          loadedDataset.rows.some((row) => typeof row[column] === "number"),
         );
         const categoricalColumns = loadedDataset.columns.filter((column) =>
-          loadedDataset.rows.some((row) => typeof row[column] === "string")
+          loadedDataset.rows.some((row) => typeof row[column] === "string"),
         );
         const preferredX = numericColumns.find((column) =>
-          /time|position|diameter|distance/i.test(column)
+          /time|position|diameter|distance/i.test(column),
         );
         const preferredY =
           numericColumns.find(
             (column) =>
-              column !== preferredX && !/^(run_id|test_number|sample_id|index)$/i.test(column)
+              column !== preferredX &&
+              !/^(run_id|test_number|sample_id|index)$/i.test(column),
           ) ?? numericColumns.find((column) => column !== preferredX);
-        setXAxis(preferredX ?? numericColumns[0] ?? loadedDataset.columns[0] ?? "");
+        setXAxis(
+          preferredX ?? numericColumns[0] ?? loadedDataset.columns[0] ?? "",
+        );
         setYAxis(preferredY ?? "");
         setGroupBy(categoricalColumns[0] ?? "");
         setSizeBy(
           numericColumns.find(
-            (column) => column !== preferredX && column !== preferredY && !/^(run_id|test_number|sample_id|index)$/i.test(column)
-          ) ?? ""
+            (column) =>
+              column !== preferredX &&
+              column !== preferredY &&
+              !/^(run_id|test_number|sample_id|index)$/i.test(column),
+          ) ?? "",
         );
         setRowLimit(Math.min(1000, loadedDataset.rows.length));
         setChartTitle("");
@@ -146,7 +167,11 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
       .catch((requestError: unknown) => {
         if (!controller.signal.aborted) {
           setDataset(null);
-          setError(requestError instanceof Error ? requestError.message : "Could not load this dataset.");
+          setError(
+            requestError instanceof Error
+              ? requestError.message
+              : "Could not load this dataset.",
+          );
         }
       })
       .finally(() => {
@@ -159,20 +184,22 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
   const numericColumns = useMemo(
     () =>
       dataset?.columns.filter((column) =>
-        dataset.rows.some((row) => typeof row[column] === "number")
+        dataset.rows.some((row) => typeof row[column] === "number"),
       ) ?? [],
-    [dataset]
+    [dataset],
   );
   const preferredNumericX =
-    numericColumns.find((column) => /time|position|diameter|distance/i.test(column)) ??
+    numericColumns.find((column) =>
+      /time|position|diameter|distance/i.test(column),
+    ) ??
     numericColumns[0] ??
     "";
   const categoricalColumns = useMemo(
     () =>
       dataset?.columns.filter((column) =>
-        dataset.rows.some((row) => typeof row[column] === "string")
+        dataset.rows.some((row) => typeof row[column] === "string"),
       ) ?? [],
-    [dataset]
+    [dataset],
   );
   const xColumns =
     chartType === "histogram" || chartType === "bubble"
@@ -180,23 +207,49 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
       : chartType === "boxplot"
         ? categoricalColumns.length
           ? categoricalColumns
-          : dataset?.columns ?? []
-        : dataset?.columns ?? [];
-  const yColumns = chartType === "heatmap" ? dataset?.columns ?? [] : numericColumns;
+          : (dataset?.columns ?? [])
+        : (dataset?.columns ?? []);
+  const yColumns =
+    chartType === "heatmap" ? (dataset?.columns ?? []) : numericColumns;
   const plottedRows = useMemo(() => {
     if (!dataset) return [];
     const count = Math.min(rowLimit, dataset.rows.length);
     if (count === dataset.rows.length) return dataset.rows;
     const interval = dataset.rows.length / count;
-    return Array.from({ length: count }, (_, index) => dataset.rows[Math.floor(index * interval)]);
+    return Array.from(
+      { length: count },
+      (_, index) => dataset.rows[Math.floor(index * interval)],
+    );
   }, [dataset, rowLimit]);
-  const theme = chartThemes[themeName];
+  const theme = useMemo(() => {
+    const selectedTheme = chartThemes[themeName];
+    if (colorMode === "dark") return selectedTheme;
+    const accent = {
+      crimson: "#b82542",
+      carbon: "#51434a",
+      burgundy: "#94233e",
+      monochrome: "#372d32",
+    }[themeName];
+    return {
+      ...selectedTheme,
+      accent,
+      palette: [accent, "#e86c82", "#7b4657", "#b48d9b", "#50444b", "#a6425d"],
+      background: "#fffafb",
+      surface: "#fffafb",
+      text: "#30242a",
+      grid: "#e8dce1",
+      dark: false,
+    };
+  }, [themeName, colorMode]);
   const histogram = chartType === "histogram";
   const heatmap = chartType === "heatmap";
-  const xType: "nominal" | "quantitative" = chartType === "boxplot" || !numericColumns.includes(xAxis)
-    ? "nominal"
-    : "quantitative";
-  const yType: "nominal" | "quantitative" = numericColumns.includes(yAxis) ? "quantitative" : "nominal";
+  const xType: "nominal" | "quantitative" =
+    chartType === "boxplot" || !numericColumns.includes(xAxis)
+      ? "nominal"
+      : "quantitative";
+  const yType: "nominal" | "quantitative" = numericColumns.includes(yAxis)
+    ? "quantitative"
+    : "nominal";
 
   useEffect(() => {
     const container = chartContainerRef.current;
@@ -209,36 +262,76 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
       data: { values: plottedRows },
       width: "container",
       height: chartHeight,
-      ...(xType === "quantitative" && !histogram && !heatmap && chartType !== "boxplot"
-        ? { params: [{ name: "zoom", select: { type: "interval", encodings: ["x"] }, bind: "scales" }] }
+      ...(xType === "quantitative" &&
+      !histogram &&
+      !heatmap &&
+      chartType !== "boxplot"
+        ? {
+            params: [
+              {
+                name: "zoom",
+                select: { type: "interval", encodings: ["x"] },
+                bind: "scales",
+              },
+            ],
+          }
         : {}),
       mark:
         chartType === "scatter" || chartType === "bubble"
-          ? { type: "point", filled: true, opacity, size: pointSize, color: theme.accent }
+          ? {
+              type: "point",
+              filled: true,
+              opacity,
+              size: pointSize,
+              color: theme.accent,
+            }
           : chartType === "line"
-            ? { type: "line", point: true, opacity, strokeWidth: lineWidth, color: theme.accent }
+            ? {
+                type: "line",
+                point: true,
+                opacity,
+                strokeWidth: lineWidth,
+                color: theme.accent,
+              }
             : chartType === "area"
-              ? { type: "area", opacity, color: theme.accent, stroke: theme.accent, strokeWidth: lineWidth }
+              ? {
+                  type: "area",
+                  opacity,
+                  color: theme.accent,
+                  stroke: theme.accent,
+                  strokeWidth: lineWidth,
+                }
               : chartType === "boxplot"
                 ? { type: "boxplot", opacity }
                 : chartType === "heatmap"
-                  ? { type: "rect", opacity, stroke: theme.background, strokeWidth: 1 }
+                  ? {
+                      type: "rect",
+                      opacity,
+                      stroke: theme.background,
+                      strokeWidth: 1,
+                    }
                   : { type: "bar", opacity, color: theme.accent },
       encoding: {
         x: {
           field: xAxis,
           type: xType,
-          ...(histogram ? { bin: true } : heatmap && xType === "quantitative" ? { bin: { maxbins: 24 } } : {}),
-          title: xAxis
+          ...(histogram
+            ? { bin: true }
+            : heatmap && xType === "quantitative"
+              ? { bin: { maxbins: 24 } }
+              : {}),
+          title: xAxis,
         },
         y: histogram
           ? { aggregate: "count", type: "quantitative", title: "Count" }
           : {
               field: yAxis,
               type: yType,
-              ...(heatmap && yType === "quantitative" ? { bin: { maxbins: 24 } } : {}),
+              ...(heatmap && yType === "quantitative"
+                ? { bin: { maxbins: 24 } }
+                : {}),
               ...(chartType === "area" ? { stack: null } : {}),
-              title: yAxis
+              title: yAxis,
             },
         ...(heatmap
           ? {
@@ -246,8 +339,8 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
                 aggregate: "count",
                 type: "quantitative",
                 title: "Samples",
-                ...(showLegend ? {} : { legend: null })
-              }
+                ...(showLegend ? {} : { legend: null }),
+              },
             }
           : groupBy
             ? {
@@ -256,20 +349,28 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
                   type: "nominal",
                   title: groupBy,
                   scale: { range: theme.palette },
-                  ...(showLegend ? {} : { legend: null })
-                }
+                  ...(showLegend ? {} : { legend: null }),
+                },
               }
             : {}),
         ...(chartType === "bubble" && sizeBy
-          ? { size: { field: sizeBy, type: "quantitative", ...(showLegend ? {} : { legend: null }) } }
+          ? {
+              size: {
+                field: sizeBy,
+                type: "quantitative",
+                ...(showLegend ? {} : { legend: null }),
+              },
+            }
           : {}),
         tooltip: showTooltips
           ? [
               { field: xAxis, type: xType },
               ...(!histogram ? [{ field: yAxis, type: yType }] : []),
-              ...(groupBy && !heatmap ? [{ field: groupBy, type: "nominal" as const }] : [])
+              ...(groupBy && !heatmap
+                ? [{ field: groupBy, type: "nominal" as const }]
+                : []),
             ]
-          : null
+          : null,
       },
       ...(chartTitle.trim() ? { title: chartTitle.trim() } : {}),
       background: theme.background,
@@ -280,17 +381,20 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
           labelColor: theme.text,
           titleColor: theme.text,
           domainColor: theme.grid,
-          tickColor: theme.grid
+          tickColor: theme.grid,
         },
         title: { color: theme.text, fontSize: 18, anchor: "start" },
         legend: { labelColor: theme.text, titleColor: theme.text },
-        view: { stroke: null }
-      }
+        view: { stroke: null },
+      },
     };
 
     let disposed = false;
     let finalize: (() => void) | undefined;
-    embed(container, spec, { actions: false, tooltip: { theme: theme.dark ? "dark" : "light" } })
+    embed(container, spec, {
+      actions: false,
+      tooltip: { theme: theme.dark ? "dark" : "light" },
+    })
       .then((result) => {
         if (disposed) {
           result.view.finalize();
@@ -300,7 +404,11 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
       })
       .catch((renderError: unknown) => {
         if (!disposed) {
-          setError(renderError instanceof Error ? renderError.message : "Could not render this chart.");
+          setError(
+            renderError instanceof Error
+              ? renderError.message
+              : "Could not render this chart.",
+          );
         }
       });
 
@@ -329,18 +437,24 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
     xAxis,
     xType,
     yAxis,
-    yType
+    yType,
   ]);
 
   function changeChartType(nextChartType: ChartType) {
     setChartType(nextChartType);
-    if ((nextChartType === "histogram" || nextChartType === "bubble") && !numericColumns.includes(xAxis)) {
+    if (
+      (nextChartType === "histogram" || nextChartType === "bubble") &&
+      !numericColumns.includes(xAxis)
+    ) {
       setXAxis(preferredNumericX);
     }
     if (nextChartType === "boxplot" && !categoricalColumns.includes(xAxis)) {
       setXAxis(categoricalColumns[0] ?? dataset?.columns[0] ?? "");
     }
-    if (nextChartType === "heatmap" && (!dataset?.columns.includes(yAxis) || yAxis === xAxis)) {
+    if (
+      nextChartType === "heatmap" &&
+      (!dataset?.columns.includes(yAxis) || yAxis === xAxis)
+    ) {
       setYAxis(dataset?.columns.find((column) => column !== xAxis) ?? "");
     }
   }
@@ -349,57 +463,87 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
     <section className="section synthetic-explorer">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">SYNTHETIC DATA EXPLORER</p>
-          <h2>Graph the selected dataset.</h2>
+          <p className="eyebrow">INTERACTIVE DATA EXPLORATION</p>
+          <h2>Explore the patterns.</h2>
         </div>
         <span className="status">Synthetic test data</span>
       </div>
       <p className="muted explorer-intro">
-        Explore the CSV files in <code>data/synthetic</code>. Tune the chart, sample size, and design;
-        drag inside the chart to zoom.
+        Examine the selected dataset through an interactive visualization.
+        Adjust the variables, chart type, and sample size to explore patterns
+        relevant to your research.
       </p>
 
       <div className="explorer-layout">
         <div className="panel explorer-controls">
-          <h3>Data &amp; chart</h3>
-          <p className="muted">Selected dataset: {dataset?.title ?? datasetId}</p>
+          <h3>Variables &amp; visualization</h3>
+          <p className="muted">
+            Selected dataset: {dataset?.title ?? datasetId}
+          </p>
           <label>
             Chart type
-            <select value={chartType} onChange={(event) => changeChartType(event.target.value as ChartType)}>
+            <select
+              value={chartType}
+              onChange={(event) =>
+                changeChartType(event.target.value as ChartType)
+              }
+            >
               {chartTypes.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
               ))}
             </select>
           </label>
           <label>
             X-axis
-            <select value={xAxis} onChange={(event) => setXAxis(event.target.value)}>
-              {xColumns.map((column) => <option key={column}>{column}</option>)}
+            <select
+              value={xAxis}
+              onChange={(event) => setXAxis(event.target.value)}
+            >
+              {xColumns.map((column) => (
+                <option key={column}>{column}</option>
+              ))}
             </select>
           </label>
           {!histogram && (
             <label>
               {heatmap ? "Y-axis / rows" : "Y-axis"}
-              <select value={yAxis} onChange={(event) => setYAxis(event.target.value)}>
-                {yColumns.map((column) => <option key={column}>{column}</option>)}
+              <select
+                value={yAxis}
+                onChange={(event) => setYAxis(event.target.value)}
+              >
+                {yColumns.map((column) => (
+                  <option key={column}>{column}</option>
+                ))}
               </select>
             </label>
           )}
           {chartType === "bubble" && (
             <label>
               Bubble size
-              <select value={sizeBy} onChange={(event) => setSizeBy(event.target.value)}>
+              <select
+                value={sizeBy}
+                onChange={(event) => setSizeBy(event.target.value)}
+              >
                 <option value="">Fixed size</option>
-                {numericColumns.map((column) => <option key={column}>{column}</option>)}
+                {numericColumns.map((column) => (
+                  <option key={column}>{column}</option>
+                ))}
               </select>
             </label>
           )}
           {!heatmap && (
             <label>
               Color by
-              <select value={groupBy} onChange={(event) => setGroupBy(event.target.value)}>
+              <select
+                value={groupBy}
+                onChange={(event) => setGroupBy(event.target.value)}
+              >
                 <option value="">Single color</option>
-                {categoricalColumns.map((column) => <option key={column}>{column}</option>)}
+                {categoricalColumns.map((column) => (
+                  <option key={column}>{column}</option>
+                ))}
               </select>
             </label>
           )}
@@ -408,9 +552,16 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
           <h3>Design</h3>
           <label>
             Color theme
-            <select value={themeName} onChange={(event) => setThemeName(event.target.value as ThemeName)}>
+            <select
+              value={themeName}
+              onChange={(event) =>
+                setThemeName(event.target.value as ThemeName)
+              }
+            >
               {Object.entries(chartThemes).map(([value, option]) => (
-                <option key={value} value={value}>{option.label}</option>
+                <option key={value} value={value}>
+                  {option.label}
+                </option>
               ))}
             </select>
           </label>
@@ -473,16 +624,41 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
             format={(value) => `${Math.round(value * 100)}%`}
           />
           <div className="toggle-list">
-            <label><input type="checkbox" checked={showGrid} onChange={(event) => setShowGrid(event.target.checked)} /> Grid lines</label>
-            <label><input type="checkbox" checked={showLegend} onChange={(event) => setShowLegend(event.target.checked)} /> Legend</label>
-            <label><input type="checkbox" checked={showTooltips} onChange={(event) => setShowTooltips(event.target.checked)} /> Tooltips</label>
+            <label>
+              <input
+                type="checkbox"
+                checked={showGrid}
+                onChange={(event) => setShowGrid(event.target.checked)}
+              />{" "}
+              Grid lines
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={showLegend}
+                onChange={(event) => setShowLegend(event.target.checked)}
+              />{" "}
+              Legend
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={showTooltips}
+                onChange={(event) => setShowTooltips(event.target.checked)}
+              />{" "}
+              Tooltips
+            </label>
           </div>
         </div>
 
         <div className={`panel explorer-chart-panel theme-${themeName}`}>
           <div className="explorer-chart-heading">
             <div>
-              <h3>{chartTitle.trim() || dataset?.title || "Loading synthetic datasets..."}</h3>
+              <h3>
+                {chartTitle.trim() ||
+                  dataset?.title ||
+                  "Preparing the selected dataset…"}
+              </h3>
               <p className="muted">
                 {loading
                   ? "Loading data..."
@@ -491,18 +667,24 @@ export default function SyntheticChartExplorer({ datasetId }: { datasetId: strin
                     : "Select a dataset to begin."}
               </p>
             </div>
-            {dataset && <span className="tag">{dataset.columns.length} columns</span>}
+            {dataset && (
+              <span className="tag">{dataset.columns.length} columns</span>
+            )}
           </div>
           {error && <div className="alert error">{error}</div>}
           <div
             ref={chartContainerRef}
             className="synthetic-chart"
             aria-label="Interactive data chart"
-            style={{ backgroundColor: theme.surface, minHeight: chartHeight + 20 }}
+            style={{
+              backgroundColor: theme.surface,
+              minHeight: chartHeight + 20,
+            }}
           />
           {dataset && (
             <p className="muted chart-hint">
-              Hover for values · drag to zoom on X · controls update the chart instantly.
+              Hover for values · drag to zoom on X · controls update the chart
+              instantly.
             </p>
           )}
         </div>
@@ -518,7 +700,7 @@ function SliderControl({
   max,
   step,
   onChange,
-  format
+  format,
 }: {
   label: string;
   value: number;
