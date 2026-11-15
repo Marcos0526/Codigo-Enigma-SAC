@@ -1,14 +1,12 @@
 """Chat routes - Groq LLM chat completions."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 import structlog
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 from services.api.src.config import settings
-from services.api.src.database import get_db_session
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -20,7 +18,7 @@ class ChatMessage(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
-    model: str
+    model: Optional[str] = None
     messages: List[ChatMessage]
     max_tokens: Optional[int] = Field(default=2000, ge=1, le=4096)
     temperature: Optional[float] = Field(default=0.7, ge=0.0, le=2.0)
@@ -69,23 +67,19 @@ async def chat_completions(
             },
         )
 
-    # Determine API URL - use custom URL if provided, otherwise default to OpenAI
     base_url = settings.LLM_API_URL or "https://api.openai.com/v1"
-    api_url = base_url.rstrip("/") + "/chat/completions"
-
-    # Prepare messages for the API
-    messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
+    model = request.model or settings.LLM_MODEL
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                base_url.rstrip("/") + "/chat/completions",
+                f"{base_url.rstrip('/')}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {settings.LLM_API_KEY}",
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": request.model,
+                    "model": model,
                     "messages": [msg.model_dump() for msg in request.messages],
                     "max_tokens": request.max_tokens,
                     "temperature": request.temperature,

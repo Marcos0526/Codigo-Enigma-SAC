@@ -85,11 +85,27 @@ select { background: white; border: 1px solid var(--line); border-radius: 7px; d
 .summary > p { line-height: 1.65; }
 .finding { border-left: 3px solid var(--lime); display: grid; gap: 4px; margin: 14px 0; padding-left: 12px; }
 .finding span { color: var(--muted); font-size: 13px; }
+.chat-section { margin-bottom: 20px; }
+.chat-container { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.chat-messages { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; max-height: 320px; min-height: 130px; overflow-y: auto; padding: 16px; }
+.chat-welcome { color: var(--muted); padding: 20px; text-align: center; }
+.chat-welcome p { margin: 0; }
+.chat-welcome .muted { font-size: 12px; margin-top: 8px; }
+.chat-message { align-items: flex-start; display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.chat-message.user { align-items: flex-end; }
+.chat-role { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.chat-bubble { background: var(--card); border: 1px solid var(--line); border-radius: 12px; max-width: min(80%, 700px); padding: 10px 14px; }
+.chat-message.user .chat-bubble { background: var(--green); color: white; }
+.chat-bubble p { font-size: 14px; line-height: 1.5; margin: 0; white-space: pre-wrap; }
+.chat-input-form { display: flex; gap: 10px; margin-top: 14px; }
+.chat-input-form input { background: var(--card); border: 1px solid var(--line); border-radius: 10px; color: var(--ink); flex: 1; min-width: 0; padding: 12px 16px; }
 @media (max-width: 720px) {
   .shell { padding: 20px 14px 50px; }
   .hero { border-radius: 16px; padding: 36px 22px; }
   .search-form, .workspace-grid, .explorer-layout { display: grid; grid-template-columns: 1fr; }
   .search-form button { width: 100%; }
+  .chat-input-form { display: grid; grid-template-columns: 1fr; }
+  .chat-input-form button { width: 100%; }
   .section-heading { align-items: start; flex-direction: column; }
   .explorer-controls { max-height: none; position: static; }
 }
