@@ -368,6 +368,36 @@ The recommended production target is **Azure Container Apps**.
 - It supports secrets, health probes, custom domains, managed identity, and GitHub Actions deployment.
 - The API needs enough memory for the FAISS index and can be kept warm with a minimum replica count.
 
+### Current Azure deployment
+
+The current Azure for Students deployment uses:
+
+| Resource | Value |
+| --- | --- |
+| Subscription | Azure for Students |
+| Resource group | `enigma-sac-rg` |
+| Region | North Central US |
+| Container Apps environment | `enigma-sac-env` |
+| API Container App | `enigma-sac-api`, internal ingress |
+| Web Container App | `enigma-sac-web`, public HTTPS ingress |
+| Azure Container Registry | `enigmasacacr185d95.azurecr.io` |
+| Storage account | `enigmasacdata185d95` |
+| Data share | `psi-data`, mounted read-only at `/app/data/psi_databases` |
+| RAG cache share | `rag-cache`, mounted at `/app/services/search/src/rag/.cache` |
+| Managed identity | `enigma-sac-pull`, `AcrPull` on the registry |
+| API image | `enigmasacacr185d95.azurecr.io/enigma-sac-api:2fe238e` |
+| Web image | `enigmasacacr185d95.azurecr.io/enigma-sac-web:93fb7dc` |
+| Public URL | `https://enigma-sac-web.salmonsky-e6e1f79d.northcentralus.azurecontainerapps.io` |
+
+Deployment notes specific to this subscription:
+
+- Azure for Students restricts resource regions to France Central, Canada Central, Belgium Central, North Central US, and Chile Central. This deployment uses **North Central US**.
+- ACR Tasks are not enabled on the current Azure for Students subscription. Images are therefore built locally with Docker and pushed to ACR.
+- The API image installs CPU-only PyTorch, reducing the image from approximately 6.7 GiB to approximately 2.1 GiB.
+- `LLM_MAX_TOKENS` is set to `800` because the configured Groq model enforces an output-token-per-minute limit of 1000.
+- The FAISS index was prebuilt once inside the running API container and persisted in the `rag-cache` Azure Files share.
+
+
 ### Recommended Azure setup
 
 | Azure resource | Purpose |
