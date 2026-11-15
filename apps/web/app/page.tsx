@@ -68,7 +68,20 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Chart state
   const chartContainerRef = useRef<HTMLDivElement>(null);
+
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+
+  // Type for chat completion response
+  type ChatCompletionResponse = {
+    choices: Array<{ message: { content: string } }>;
+  };
 
   useEffect(() => {
     if (chart && chartContainerRef.current) {
@@ -173,6 +186,55 @@ export default function HomePage() {
       setError(requestError instanceof Error ? requestError.message : "Chart generation failed.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function sendChatMessage() {
+    if (!chatInput.trim() || chatLoading) return;
+    const userMessage = chatInput.trim();
+    setChatInput("");
+    setChatLoading(true);
+    
+    setChatMessages(prev => [...prev, { role: "user", content: userMessage }]);
+    
+    try {
+      // Use fetch directly to avoid generic type issues
+      const response = await fetch(`${API_URL}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "openai/gpt-oss-120b",
+          messages: [
+            { role: "system", content: "You are a helpful assistant for NASA PSI combustion science data analysis. Answer questions about the selected dataset and combustion science topics." },
+            ...chatMessages.map(m => ({ role: m.role, content: m.content })),
+            { role: "user", content: userMessage }
+          ],
+          max_tokens: 1000,
+          temperature: 0.7
+        })
+      });
+      const responseData = await response.json();
+      
+      const assistantMessage = responseData.choices[0]?.message?.content || "Sorry, I couldn't generate a response.";
+      setChatMessages(prev => [...prev, { role: "assistant", content: assistantMessage }]);
+    } catch (error) {
+      setChatMessages(prev => [...prev, { role: "assistant", content: "Error: " + (error instanceof Error ? error.message : "Failed to get response") }]);
+    } finally {
+      setChatLoading(false);
+      // Scroll to bottom
+      setTimeout(() => chatContainerRef.current?.scrollTo({ top: chatContainerRef.current.scrollHeight, behavior: "smooth" }), 100);
+    }
+  }
+
+  function handleChatSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    sendChatMessage();
+  }
+
+  function handleChatKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
     }
   }
 
@@ -288,6 +350,107 @@ export default function HomePage() {
           )}
         </section>
       )}
+
+      {/* Chat Interface */}
+      <section className="section chat-section" style={{ marginTop: "40px" }}>
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">GROQ CHAT ASSISTANT</p>
+            <h2>Ask about combustion science or the selected dataset</h2>
+          </div>
+          <span className="tag">Powered by Groq</span>
+        </div>
+        
+        <div className="chat-container">
+          <div ref={chatContainerRef} className="chat-messages" style={{ maxHeight: "300px", overflowY: "auto", padding: "16px", border: "1px solid var(--line)", borderRadius: "14px", background: "var(--card)", marginBottom: "16px" }}>
+            {chatMessages.length === 0 && (
+              <div className="chat-welcome" style={{ color: "var(--muted)", textAlign: "center", padding: "20px" }}>
+                <p>Ask me about combustion science, the selected dataset, or anything else!</p>
+                <p className="muted" style={{ fontSize: "12px", marginTop: "8px" }}>
+                  Example: "Explain the temperature trends in the BRE dataset" or "What is a cool flame?"
+                </p>
+              </div>
+            )}
+            {chatMessages.map((msg, idx) => (
+              <div key={idx} className={`chat-message ${msg.role}`} style={{ marginBottom: "12px", display: "flex", flexDirection: "column", gap: "4px", alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}>
+                <span className="chat-role" style={{ fontSize: "11px", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase" }}>
+                  {msg.role === "user" ? "You" : "Groq Assistant"}
+                </span>
+                <div className="chat-bubble" style={{
+                  maxWidth: "80%",
+                  padding: "10px 14px",
+                  borderRadius: "12px",
+                  background: msg.role === "user" ? "var(--green)" : "var(--card)",
+                  color: msg.role === "user" ? "white" : "var(--ink)",
+                  border: "1px solid var(--line)",
+                  alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
+                }}>
+                  <p style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: "14px", lineHeight: 1.5 }}>{msg.content}</p>
+                </div>
+              </div>
+            ))}
+            {chatLoading && (
+              <div className="chat-message assistant" style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-start" }}>
+                <span className="chat-role" style={{ fontSize: "11px", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase" }}>
+                  Groq Assistant
+                </span>
+                <div className="chat-bubble" style={{
+                  maxWidth: "80%",
+                  padding: "10px 14px",
+                  borderRadius: "12px",
+                  background: "var(--card)",
+                  color: "var(--ink)",
+                  border: "1px solid var(--line)",
+                  alignSelf: "flex-start",
+                }}>
+                  <p style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: "14px", lineHeight: 1.5 }}>
+                    <span className="typing-indicator">Thinking</span>
+                    <span className="typing-dots">...</span>
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <form onSubmit={handleChatSubmit} className="chat-input-form" style={{ display: "flex", gap: "10px" }}>
+            <input
+              ref={chatInputRef}
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={handleChatKeyDown}
+              placeholder="Ask about combustion science, the dataset, or anything..."
+              disabled={chatLoading}
+              style={{
+                flex: 1,
+                padding: "12px 16px",
+                border: "1px solid var(--line)",
+                borderRadius: "10px",
+                background: "var(--card)",
+                color: "var(--ink)",
+                fontSize: "14px",
+              }}
+              aria-label="Chat input"
+            />
+            <button
+              type="submit"
+              disabled={chatLoading || !chatInput.trim()}
+              style={{
+                padding: "12px 24px",
+                background: "var(--green)",
+                color: "white",
+                border: "none",
+                borderRadius: "10px",
+                fontWeight: 700,
+                cursor: chatLoading || !chatInput.trim() ? "not-allowed" : "pointer",
+                opacity: chatLoading || !chatInput.trim() ? 0.5 : 1,
+              }}
+            >
+              {chatLoading ? "Thinking..." : "Send"}
+            </button>
+          </form>
+        </div>
+      </section>
     </main>
   );
 }

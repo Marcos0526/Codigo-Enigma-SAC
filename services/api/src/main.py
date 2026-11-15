@@ -15,7 +15,7 @@ from services.api.src.database import init_db, close_db, get_db_session
 from services.api.src.middleware.request_id import RequestIDMiddleware
 from services.api.src.middleware.logging import LoggingMiddleware
 from services.api.src.middleware.rate_limit import RateLimitMiddleware
-from services.api.src.routes import search, datasets, summarization, visualization, health
+from services.api.src.routes import search, datasets, summarization, visualization, health, chat
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Configure structured logging
@@ -101,6 +101,7 @@ app.include_router(search.router, prefix="/api/v1", tags=["Search"])
 app.include_router(datasets.router, prefix="/api/v1", tags=["Datasets"])
 app.include_router(summarization.router, prefix="/api/v1", tags=["Summarization"])
 app.include_router(visualization.router, prefix="/api/v1", tags=["Visualization"])
+app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
 
 # Root endpoint
 @app.get("/")
