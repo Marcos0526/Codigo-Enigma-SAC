@@ -45,7 +45,7 @@ def init_db(ctx):
         async with engine.begin() as conn:
             # Create extensions
             await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'))
-            await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "pgvector"'))
+            await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "vector"'))
             await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "pg_trgm"'))
             # Tables are created via migration scripts
         await engine.dispose()

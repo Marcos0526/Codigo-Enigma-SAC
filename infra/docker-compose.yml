@@ -5,7 +5,7 @@ services:
   # PostgreSQL with pgvector for catalog and vector storage
   # ---------------------------------------------------------------------------
   postgres:
-    image: pgvector/pgvector:pg16
+    image: docker.io/pgvector/pgvector:pg16
     container_name: enigma-sac-postgres
     environment:
       POSTGRES_DB: enigma_sac
@@ -16,7 +16,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db:/docker-entrypoint-initdb.d:ro
+      - ./init-db:/docker-entrypoint-initdb.d:ro,z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-enigma} -d enigma_sac"]
       interval: 10s
@@ -29,7 +29,7 @@ services:
   # Redis for caching and rate limiting
   # ---------------------------------------------------------------------------
   redis:
-    image: redis:7-alpine
+    image: docker.io/library/redis:7-alpine
     container_name: enigma-sac-redis
     ports:
       - "6379:6379"
