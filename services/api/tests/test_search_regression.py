@@ -107,10 +107,15 @@ def test_chat_with_llm_grounds_the_prompt_and_appends_sources():
     messages = captured['request'].messages
     assert messages[0].role == 'system'
     assert 'RETRIEVED LOCAL NASA PSI CONTEXT' in messages[0].content
+    assert 'SELECTED DATASET / APPLICATION CONTEXT' in messages[0].content
     assert 'PSI-20/19056A2_data.csv' in messages[0].content
     assert 'cosine 0.800' in messages[0].content
     assert 'Selected dataset: 19056A2 data' in messages[0].content
     assert [message.role for message in messages[1:]] == ['user']
+
+    retrieval_query = rag.retrieve.call_args.args[0]
+    assert 'Selected dataset: 19056A2 data' in retrieval_query
+    assert 'What temperature data is available?' in retrieval_query
 
 
 def test_chat_falls_back_to_retrieval_when_llm_fails():

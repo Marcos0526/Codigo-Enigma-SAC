@@ -226,6 +226,8 @@ Format your response as structured text with clear sections."""
 
 {json.dumps(facts, indent=2, default=str)}
 
+Write the complete response in English Markdown. Use headings, paragraphs, bullet lists, and tables where appropriate. Do not wrap the response in a code fence.
+
 Generate a summary with:
 1. Title
 2. Executive Summary (2-3 sentences)
@@ -283,6 +285,8 @@ CRITICAL RULES:
 
 {json.dumps(facts, indent=2, default=str)}
 
+Write the complete response in English Markdown. Use headings, paragraphs, bullet lists, and tables where appropriate. Do not wrap the response in a code fence.
+
 Generate a summary with:
 1. Title
 2. Executive Summary (2-3 sentences)
@@ -335,6 +339,8 @@ Format your response as structured text with clear sections."""
     user_prompt = f"""Dataset Facts (VERIFIED - DO NOT INVENT ADDITIONAL INFORMATION):
 
 {json.dumps(facts, indent=2, default=str)}
+
+Write the complete response in English Markdown. Use headings, paragraphs, bullet lists, and tables where appropriate. Do not wrap the response in a code fence.
 
 Generate a summary with:
 1. Title
@@ -429,7 +435,7 @@ def parse_summary(summary_text: str, facts: dict) -> dict:
 
     return {
         "title": facts["name"] + " - Summary",
-        "executiveSummary": summary_text[:500] + "..." if len(summary_text) > 500 else summary_text,
+        "executiveSummary": summary_text.strip(),
         "keyVariables": [c["name"] for c in facts.get("numeric_columns", []) + facts.get("categorical_columns", [])],
         "coverage": {
             "temporal": facts.get("tags", ["Unknown"])[0] if facts.get("tags") else "Unknown",
@@ -469,19 +475,19 @@ def generate_descriptive_summary(facts: dict) -> str:
     row_count = facts.get("row_count")
 
     lines = [
-        f"Title: {facts['name']} - Descriptive Summary",
+        f"# {facts['name']} — Descriptive Summary",
         "",
-        f"Executive Summary: This dataset ({facts['name']}) from investigation {facts['psi_id']} "
+        f"## Executive summary\n\nThis dataset ({facts['name']}) from investigation {facts['psi_id']} "
         f"({facts.get('investigation_title', 'Unknown')}) contains {len(numeric_cols)} numerical columns "
         f"and {len(cat_cols)} categorical columns across {row_count or 'unknown'} rows. "
         f"Data format: {facts['format']}. Access: {facts['access_policy']}. Verification status: {facts['verification_status']}.",
         "",
-        "Key Variables: " + ", ".join([c["name"] for c in numeric_cols + cat_cols]) or "None",
+        "## Key variables\n\n" + (", ".join([c["name"] for c in numeric_cols + cat_cols]) or "None"),
         "",
-        f"Coverage: Temporal: {facts.get('tags', ['Unknown'])[0] if facts.get('tags') else 'Unknown'}, "
+        f"## Coverage\n\nTemporal: {facts.get('tags', ['Unknown'])[0] if facts.get('tags') else 'Unknown'}, "
         f"Rows: {row_count if row_count else 'Unknown'}",
         "",
-        "Findings:",
+        "## Findings",
     ]
 
     for col in numeric_cols:
@@ -509,16 +515,16 @@ def generate_descriptive_summary(facts: dict) -> str:
 
     lines.extend([
         "",
-        "Limitations:",
+        "## Limitations",
         "  - Summary generated from metadata only; no LLM enhancement available",
         "  - Statistics may not be available for all columns",
         "  - Data not directly inspected; based on cataloged metadata",
         "",
-        "Warnings:",
+        "## Data notes",
         "  - This is a descriptive summary, not an analytical summary",
         "  - Verification status: " + facts.get("verification_status", "unknown"),
         "",
-        "Sources:",
+        "## Sources",
         f"  - metadata: {facts['psi_id']} investigation record",
         f"  - metadata: dataset catalog entry {facts['dataset_id']}",
     ])

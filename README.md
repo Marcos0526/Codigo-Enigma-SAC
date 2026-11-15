@@ -375,9 +375,11 @@ Open `http://localhost:3000`. The first search or chat request builds the FAISS 
 
 The chat endpoint always retrieves from the local FAISS index first. Then:
 
-1. It builds a system prompt containing the top `NASA_RAG_TOP_K` PSI metadata/file chunks, their cosine scores, and the investigation/dataset IDs.
-2. It asks the LLM to use **only** that context, cite every factual sentence as `[1]`, `[2]`, etc., and never invent measurements or file contents.
+1. It builds a system prompt containing the selected dataset's name, PSI ID, compact summary, and key variables as `[S]`, plus the top `NASA_RAG_TOP_K` PSI metadata/file chunks and their cosine scores.
+2. It asks the LLM to use **only** that context, cite selected-dataset facts as `[S]`, cite retrieved facts as `[1]`, `[2]`, etc., and never invent measurements or file contents.
 3. It appends an explicit `Local NASA PSI sources:` list to the answer.
+
+The chart explorer also reads real rows from `GET /api/v1/datasets/{id}/preview`; the page no longer calls any synthetic-data endpoint.
 
 Without `LLM_API_KEY`, the endpoint returns the cited retrieval itself instead of inventing a response. If the LLM provider fails, the endpoint also falls back to the cited retrieval instead of failing the chat.
 
@@ -387,10 +389,12 @@ Configure any OpenAI-compatible provider in `.env`:
 | --- | --- | --- |
 | `LLM_API_KEY` | Provider key; empty means retrieval-only | `gsk_...` |
 | `LLM_API_URL` | OpenAI-compatible base URL | `https://api.groq.com/openai/v1` |
-| `LLM_MODEL` | Chat model used when the request omits `model` | `llama-3.3-70b-versatile` |
+| `LLM_MODEL` | Chat model used when the request omits `model` | `qwen/qwen3.8-27b` |
 | `LLM_MAX_TOKENS` | Maximum answer length | `1000` |
 | `LLM_TEMPERATURE` | Lower is more factual | `0.1` |
 | `NASA_RAG_TOP_K` | Retrieved chunks sent to the LLM | `5` |
+
+If the provider enforces a low input-token-per-minute limit, reduce `NASA_RAG_TOP_K` or keep the frontend summary compact. The page already sends only the summary excerpt and key variables, not the full summary JSON.
 
 Provider examples:
 
@@ -403,7 +407,7 @@ LLM_MODEL=gpt-4o-mini
 # Groq
 LLM_API_KEY=gsk_...
 LLM_API_URL=https://api.groq.com/openai/v1
-LLM_MODEL=llama-3.3-70b-versatile
+LLM_MODEL=qwen/qwen3.8-27b
 
 # NVIDIA
 LLM_API_KEY=nvapi-...

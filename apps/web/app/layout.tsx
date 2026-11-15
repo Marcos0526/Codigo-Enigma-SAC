@@ -2,15 +2,16 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Enigma SAC",
-  description: "Semantic discovery for NASA PSI combustion science datasets"
+  title: "Enigma SAC | Physical Sciences Discovery",
+  description:
+    "Connect your research interests with NASA Physical Sciences Informatics datasets through semantic discovery and interactive exploration.",
 };
 
 export default function RootLayout({
-  children
+  children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="dark">
       <body>{children}</body>
     </html>
   );

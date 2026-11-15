@@ -272,25 +272,36 @@ def _rag_system_message(retrieved: list[dict], request: ChatCompletionRequest) -
         metadata = match["metadata"]
         context_parts.append(
             f"[{index}] {metadata.get('source', 'NASA PSI metadata')} "
-            f"(cosine {match['score']:.3f})\n{match['content']}"
+            f"(cosine {match['score']:.3f})\n{match['content'][:1500]}"
         )
     existing_constraints = "\n".join(
         message.content for message in request.messages if message.role == "system"
-    )
+    ).strip()
+    if len(existing_constraints) > 6000:
+        existing_constraints = (
+            existing_constraints[:6000] + "\n[selected dataset context truncated]"
+        )
     return ChatMessage(
         role="system",
         content=(
             "You are the NASA PSI Combustion Science RAG assistant. Answer in the user's "
-            "language. Use ONLY the retrieved local context below for factual claims, "
-            "investigation IDs, dataset/file names, column names, statistics and numbers. "
-            "Cite every factual sentence with the matching bracket number, for example [1]. "
-            "If the context does not answer the question, say what is missing instead of "
-            "guessing. Never invent measurements, units, rows or file contents. Clearly "
-            "separate investigation metadata from computed column statistics. If sources "
-            "disagree, state the disagreement and cite both.\n\n"
-            f"RETRIEVED LOCAL NASA PSI CONTEXT (top {len(retrieved)} by cosine similarity):\n"
+            "language. Use ONLY the selected-dataset context and the retrieved local "
+            "context below for factual claims, investigation IDs, dataset/file names, "
+            "column names, statistics and numbers. When the question is about the "
+            "currently selected dataset, prefer the SELECTED DATASET context and cite it "
+            "as [S]. Cite retrieved-context facts with the matching bracket number, for "
+            "example [1]. If neither context answers the question, say what is missing "
+            "instead of guessing. Never invent measurements, units, rows or file "
+            "contents. Clearly separate investigation metadata from computed column "
+            "statistics. If sources disagree, state the disagreement and cite both.\n\n"
+            + (
+                f"SELECTED DATASET / APPLICATION CONTEXT (authoritative for the current "
+                f"selection; cite as [S]):\n{existing_constraints}\n\n"
+                if existing_constraints
+                else ""
+            )
+            + f"RETRIEVED LOCAL NASA PSI CONTEXT (top {len(retrieved)} by cosine similarity):\n"
             + "\n\n".join(context_parts)
-            + (f"\n\nADDITIONAL USER CONSTRAINTS:\n{existing_constraints}" if existing_constraints else "")
         ),
     )
 
@@ -303,9 +314,16 @@ async def local_rag_chat_completions(request: ChatCompletionRequest) -> ChatComp
     ).strip()
     if not question:
         raise HTTPException(status_code=400, detail="A user message is required")
+    system_context = "\n".join(
+        message.content for message in request.messages if message.role == "system"
+    ).strip()
+    # Include the selected-dataset context in the retrieval query so questions
+    # such as "what columns does the selected dataset have?" do not retrieve
+    # unrelated PSI files.
+    retrieval_query = f"{system_context[:1500]}\n{question}".strip() if system_context else question
     try:
         retrieved = await asyncio.to_thread(
-            get_rag().retrieve, question, settings.NASA_RAG_TOP_K
+            get_rag().retrieve, retrieval_query, settings.NASA_RAG_TOP_K
         )
     except (ImportError, ModuleNotFoundError, FileNotFoundError, ValueError) as exc:
         raise HTTPException(
