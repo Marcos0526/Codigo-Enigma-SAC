@@ -89,6 +89,8 @@ def test_chat_with_llm_grounds_the_prompt_and_appends_sources():
     with patch.object(local_data, 'get_rag', return_value=rag), patch.object(
         local_data.settings, 'LLM_API_KEY', 'test-key'
     ), patch.object(
+        local_data.settings, 'LLM_MAX_TOKENS', 800
+    ), patch.object(
         local_data, 'legacy_chat_completions', side_effect=fake_completion
     ):
         response = TestClient(app).post('/api/v1/chat/completions', json={
@@ -112,6 +114,7 @@ def test_chat_with_llm_grounds_the_prompt_and_appends_sources():
     assert 'cosine 0.800' in messages[0].content
     assert 'Selected dataset: 19056A2 data' in messages[0].content
     assert [message.role for message in messages[1:]] == ['user']
+    assert captured['request'].max_tokens == 800
 
     retrieval_query = rag.retrieve.call_args.args[0]
     assert 'Selected dataset: 19056A2 data' in retrieval_query

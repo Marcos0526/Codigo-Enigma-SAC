@@ -69,6 +69,10 @@ async def chat_completions(
 
     base_url = settings.LLM_API_URL or "https://api.openai.com/v1"
     model = request.model or settings.LLM_MODEL
+    max_tokens = min(
+        request.max_tokens or settings.LLM_MAX_TOKENS,
+        settings.LLM_MAX_TOKENS,
+    )
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -81,7 +85,7 @@ async def chat_completions(
                 json={
                     "model": model,
                     "messages": [msg.model_dump() for msg in request.messages],
-                    "max_tokens": request.max_tokens,
+                    "max_tokens": max_tokens,
                     "temperature": request.temperature,
                     "stream": request.stream,
                 },

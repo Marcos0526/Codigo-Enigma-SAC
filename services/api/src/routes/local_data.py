@@ -411,8 +411,15 @@ async def local_rag_chat_completions(request: ChatCompletionRequest) -> ChatComp
 
     rag_system = _rag_system_message(retrieved, request)
     conversation = [message for message in request.messages if message.role != "system"]
+    # Providers such as Groq enforce output-token-per-minute limits. Cap the
+    # request to the configured maximum so a frontend default does not force a
+    # fallback to retrieval-only mode.
+    max_tokens = min(
+        request.max_tokens or settings.LLM_MAX_TOKENS,
+        settings.LLM_MAX_TOKENS,
+    )
     enriched = request.model_copy(
-        update={"messages": [rag_system, *conversation]}
+        update={"messages": [rag_system, *conversation], "max_tokens": max_tokens}
     )
     try:
         response = await legacy_chat_completions(enriched)
