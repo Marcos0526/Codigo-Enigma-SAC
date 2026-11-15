@@ -19,7 +19,10 @@ WORKDIR /app
 
 # Copy requirements first for better caching
 COPY services/api/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Install CPU-only PyTorch first so sentence-transformers does not pull the
+# much larger CUDA wheel. The API runs FAISS and embeddings on CPU.
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch \
+    && pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY services/api/ ./services/api/
