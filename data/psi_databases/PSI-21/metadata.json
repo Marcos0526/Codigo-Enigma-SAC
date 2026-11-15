@@ -1,0 +1,74 @@
+{
+  "psi_id": "PSI-21",
+  "title": "ACME — Coflow Laminar Diffusion Flame (CLD Flame)",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Flames of gaseous fuel",
+  "scientific_focus": "Gas-phase diffusion flames; soot formation and oxidation",
+  "project_setting": "ISS microgravity experiment",
+  "record_type": "Investigation",
+  "doi": "10.60555/23e1-9950",
+  "doi_url": "https://doi.org/10.60555/23e1-9950",
+  "objectives": "Acquire benchmark measurements of nonpremixed diffusion flames across sooty and highly diluted conditions and improve models of soot production and flame structure.",
+  "approach": "Burn gaseous fuel in a coflow burner under carefully controlled fuel and oxidizer flows. Record flame shape, luminosity, and soot-related behavior under microgravity so predictions can be compared with measurements.",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-21"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    },
+    {
+      "label": "NASA background",
+      "url": "https://science.nasa.gov/physical-sciences-informatics-psi/nasa-psi-research-opportunity/"
+    },
+    {
+      "label": "NASA background",
+      "url": "https://www.nasa.gov/humans-in-space/space-stations-quest-for-the-secrets-of-fire/"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-21",
+  "csv_files": [
+    {
+      "path": "17319RAD1_data.csv",
+      "description": "Dataset file: 17319RAD1_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "17319C1_data.csv",
+      "description": "Dataset file: 17319C1_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "17319RAD3_data.csv",
+      "description": "Dataset file: 17319RAD3_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "17319A3_data.csv",
+      "description": "Dataset file: 17319A3_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "17319D2_data.csv",
+      "description": "Dataset file: 17319D2_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "18026L1_data.csv",
+      "description": "Dataset file: 18026L1_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "17319C2_data.csv",
+      "description": "Dataset file: 17319C2_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "17319RAD2_data.csv",
+      "description": "Dataset file: 17319RAD2_data.csv",
+      "format": "csv"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "psi_id": "PSI-47",
+  "title": "Dust and Aerosol Measurement Feasibility Test (DAFT) / DAFT-2",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Spacecraft Fire Safety",
+  "scientific_focus": "Spacecraft fire safety; aerosol particle measurement instrument qualification",
+  "project_setting": "Microgravity Investigation; ISS",
+  "record_type": "Investigation",
+  "doi": "10.60555/ztgj-d202",
+  "doi_url": "https://doi.org/10.60555/ztgj-d202",
+  "objectives": "Validate aerosol particle-counting devices in microgravity before the SAME flight investigation; assess whether particle instruments behave reliably in orbit.",
+  "approach": "Modify a TSI P-Trak counter for microgravity by adapting its isopropyl-alcohol condenser and removing its gravity-dependent mercury orientation switch. Generate Arizona Red Dust (ARD) aerosols with gaseous nitrogen in Mylar sample bags, test on orbit, and compare P-Trak counts with DustTrak reference measurements.",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-47"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-47",
+  "csv_files": [
+    {
+      "path": "DAFT Flight Data GMT053.xls",
+      "description": "Dataset file: DAFT Flight Data GMT053.xls",
+      "format": "xls"
+    }
+  ]
+}

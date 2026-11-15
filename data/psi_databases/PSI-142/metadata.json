@@ -1,0 +1,26 @@
+{
+  "psi_id": "PSI-142",
+  "title": "Quantitative Studies of Cool Flame Transitions at Radiation/Stretch Extinction Using Counterflow Flames",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Spacecraft Fire Safety",
+  "scientific_focus": "Low-temperature flame transition; extinction and oxygen effects",
+  "project_setting": "Ground Investigation; modeling and controlled flame studies",
+  "record_type": "Investigation",
+  "doi": "10.60555/80qf-vj95",
+  "doi_url": "https://doi.org/10.60555/80qf-vj95",
+  "objectives": "Characterize how oxygen concentration, stretch and radiative heat transfer shift cool-flame stability and extinction boundaries.",
+  "approach": "Use FLEX flight conditions as a benchmark and compare three simulation methods: spark-assisted propagation in n-heptane/air, one-dimensional dimethyl ether flame propagation with arc-length continuation, and elevated-pressure dimethyl ether/air cool-flame computations up to approximately 20 atm.",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-142"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-142",
+  "csv_files": [],
+  "status_message": "No data available for this investigation yet. Graphs cannot be generated."
+}

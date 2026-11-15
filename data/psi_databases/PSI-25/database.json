@@ -1,0 +1,31 @@
+{
+  "psi_id": "PSI-25",
+  "title": "Burning and Suppression of Solids — II (BASS-II)",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Spacecraft Fire Safety",
+  "scientific_focus": "Spacecraft Fire Safety",
+  "project_setting": "Microgravity Investigation; ISS",
+  "record_type": "Investigation",
+  "doi": "10.60555/4qc4-de67",
+  "doi_url": "https://doi.org/10.60555/4qc4-de67",
+  "objectives": "Characterize ignition, flame growth, spread, and extinction limits of solid fuels in weak forced flow; compare these results with normal-gravity flammability screening and provide data for future fire-safety experiments.",
+  "approach": "Carry out crew-assisted burning tests in a small wind tunnel installed inside the ISS Microgravity Science Glovebox. Mount rods, sheets, films, and other geometries; vary airflow up to approximately 40 cm/s and reduce oxygen concentration by nitrogen dilution. Image and assess flame appearance and spread in concurrent and opposed flow.",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-25"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-25",
+  "csv_files": [
+    {
+      "path": "PSI-25_Experimental table_BASS-II.csv",
+      "description": "Dataset file: PSI-25_Experimental table_BASS-II.csv",
+      "format": "csv"
+    }
+  ]
+}

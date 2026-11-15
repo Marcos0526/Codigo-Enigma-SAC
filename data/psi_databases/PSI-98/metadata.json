@@ -1,0 +1,26 @@
+{
+  "psi_id": "PSI-98",
+  "title": "Spacecraft Fire Safety Experiment — I (SAFFIRE-I)",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Spacecraft Fire, Smoke Distribution",
+  "scientific_focus": "Spacecraft Fire, Smoke Distribution",
+  "project_setting": "Microgravity Investigation; uncrewed Cygnus spacecraft",
+  "record_type": "Investigation",
+  "doi": "10.60555/0t15-1z43",
+  "doi_url": "https://doi.org/10.60555/0t15-1z43",
+  "objectives": "Measure growth and propagation of a large microgravity fire and compare low-gravity flammability limits with normal-gravity material screening tests.",
+  "approach": "After Cygnus departed the ISS, ignite an approximately 0.94 m × 0.4 m cotton–fiberglass (SIBAL) panel inside a forced-flow duct, with air speed around 20 cm/s. Use two cameras plus thermal, radiative, pressure, oxygen, carbon-dioxide, and airflow sensors to observe the burn.",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-98"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-98",
+  "csv_files": [],
+  "status_message": "No data available for this investigation yet. Graphs cannot be generated."
+}

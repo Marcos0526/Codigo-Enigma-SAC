@@ -1,0 +1,26 @@
+{
+  "psi_id": "PSI-115",
+  "title": "Utilization of SAME Data for Advanced Modeling and Simulation of Smoke Generation in Micro-Gravity",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Smoke Aerosol, Combustion Simulation",
+  "scientific_focus": "Smoke aerosol dynamics and transport; numerical simulations",
+  "project_setting": "Ground Investigation; archived data reanalysis",
+  "record_type": "Investigation",
+  "doi": "10.60555/q0v5-1v28",
+  "doi_url": "https://doi.org/10.60555/q0v5-1v28",
+  "objectives": "Use SAME-derived smoke-generation conditions to explain particle growth, settling, thermophoresis, and transport differences between Earth gravity and microgravity.",
+  "approach": "Model dibutyl phthalate (DBP) smoke aerosols originating from a heated sample using direct numerical simulation with a Navier–Stokes nodal formulation. Compare two low-speed crossflow cases under buoyant and nonbuoyant conditions; examine how wake geometry and flow affect particle accumulation and size distributions.",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-115"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-115",
+  "csv_files": [],
+  "status_message": "No data available for this investigation yet. Graphs cannot be generated."
+}

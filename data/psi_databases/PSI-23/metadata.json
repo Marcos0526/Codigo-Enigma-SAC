@@ -1,0 +1,84 @@
+{
+  "psi_id": "PSI-23",
+  "title": "ACME — Structure and Response of Spherical Diffusion Flames (s-Flames)",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Flames of gaseous fuels",
+  "scientific_focus": "Spherical diffusion flames; flame stability and extinction",
+  "project_setting": "ISS microgravity experiment",
+  "record_type": "Investigation",
+  "doi": "10.60555/k57n-p030",
+  "doi_url": "https://doi.org/10.60555/k57n-p030",
+  "objectives": "Investigate the structure, response, and extinction behavior of spherical gas diffusion flames without the strong distortion caused by buoyancy.",
+  "approach": "Stabilize approximately spherical nonpremixed flames in the ACME chamber and systematically adjust fuel/oxidizer flow and mixture composition. Measure changes in size, response, and stability.",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-23"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    },
+    {
+      "label": "NASA background",
+      "url": "https://science.nasa.gov/physical-sciences-informatics-psi/nasa-psi-research-opportunity/"
+    },
+    {
+      "label": "NASA background",
+      "url": "https://www.nasa.gov/humans-in-space/space-stations-quest-for-the-secrets-of-fire/"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-23",
+  "csv_files": [
+    {
+      "path": "19308G1_data.csv",
+      "description": "Dataset file: 19308G1_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "19304B2_data.csv",
+      "description": "Dataset file: 19304B2_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "19304B3_data.csv",
+      "description": "Dataset file: 19304B3_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "19304K1_data.csv",
+      "description": "Dataset file: 19304K1_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "19304A2_data.csv",
+      "description": "Dataset file: 19304A2_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "19304B4_data.csv",
+      "description": "Dataset file: 19304B4_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "19304B1_data.csv",
+      "description": "Dataset file: 19304B1_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "19304A7_data.csv",
+      "description": "Dataset file: 19304A7_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "19304A3_data.csv",
+      "description": "Dataset file: 19304A3_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "19304A1_data.csv",
+      "description": "Dataset file: 19304A1_data.csv",
+      "format": "csv"
+    }
+  ]
+}

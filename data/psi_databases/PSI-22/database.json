@@ -1,0 +1,44 @@
+{
+  "psi_id": "PSI-22",
+  "title": "ACME — Electric-Field Effects on Laminar Diffusion Flames (E-FIELD Flames)",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Laminar Flames",
+  "scientific_focus": "Gaseous combustion; electric-field flame control and emissions",
+  "project_setting": "ISS microgravity experiment",
+  "record_type": "Investigation",
+  "doi": "10.60555/se5a-8c73",
+  "doi_url": "https://doi.org/10.60555/se5a-8c73",
+  "objectives": "Assess the ability of applied electric fields to change diffusion-flame shape, transport, and emissions, including soot-related processes.",
+  "approach": "Apply controlled electric fields to nonpremixed laminar flames in the ISS combustion chamber; compare observed flame responses with experiments without the field.",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-22"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    },
+    {
+      "label": "NASA background",
+      "url": "https://science.nasa.gov/physical-sciences-informatics-psi/nasa-psi-research-opportunity/"
+    },
+    {
+      "label": "NASA background",
+      "url": "https://www.nasa.gov/humans-in-space/space-stations-quest-for-the-secrets-of-fire/"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-22",
+  "csv_files": [
+    {
+      "path": "18078D1_data.csv",
+      "description": "Dataset file: 18078D1_data.csv",
+      "format": "csv"
+    },
+    {
+      "path": "18073A4_data.csv",
+      "description": "Dataset file: 18073A4_data.csv",
+      "format": "csv"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "psi_id": "PSI-117",
+  "title": "Effect of External Thermo-Convective Perturbation on Cool Flame Dynamics: A Multidimensional Multi-Physics CFD Analysis",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Droplet",
+  "scientific_focus": "Droplet cool flames; computational fluid dynamics and thermal perturbations",
+  "project_setting": "Ground Investigation; numerical modeling",
+  "record_type": "Investigation",
+  "doi": "10.60555/gz0q-b577",
+  "doi_url": "https://doi.org/10.60555/gz0q-b577",
+  "objectives": "Determine how weak convection, external heating, and their interaction influence initiation, oscillation, and extinction of microgravity droplet cool flames.",
+  "approach": "Develop a three-dimensional OpenFOAM CFD model of n-alkane droplets with fluid dynamics, low-temperature chemistry, transport, and radiation. Validate with ISS FLEX data, then test droplet drift, imposed heat flux, and combined forcing over multiple droplet sizes and ambient conditions to map cool-flame stability.",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-117"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-117",
+  "csv_files": [],
+  "status_message": "No data available for this investigation yet. Graphs cannot be generated."
+}

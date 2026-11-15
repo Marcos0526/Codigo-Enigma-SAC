@@ -1,0 +1,30 @@
+{
+  "psi_id": "PSI-10",
+  "title": "ACME — Flame Design",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Flames of Gaseous Fuels",
+  "scientific_focus": "Nonpremixed gaseous flames; soot inception and radiative extinction",
+  "project_setting": "ISS microgravity experiment",
+  "record_type": "Investigation",
+  "doi": "10.60555/w4zy-bt45",
+  "doi_url": "https://doi.org/10.60555/w4zy-bt45",
+  "objectives": "Improve control over flame structure and soot production and study quasi-steady spherical diffusion flames, especially extinction driven by radiation.",
+  "approach": "Produce gas diffusion flames using interchangeable ACME burner hardware, adjust reactant streams, and document flame geometry, stability, and radiation-related extinction in microgravity.",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-10"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    },
+    {
+      "label": "NASA background",
+      "url": "https://www.nasa.gov/humans-in-space/space-stations-quest-for-the-secrets-of-fire/"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-10",
+  "csv_files": [],
+  "status_message": "No data available for this investigation yet. Graphs cannot be generated."
+}

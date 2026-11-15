@@ -1,0 +1,26 @@
+{
+  "psi_id": "PSI-62",
+  "title": "Concurrent Flame Spread Modeling using Flamelet Generated Manifolds in Microgravity with Comparison to BASS Experiments using Two-Color Tomography",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Spacecraft Fire Safety",
+  "scientific_focus": "Spacecraft Fire Safety",
+  "project_setting": "Ground Investigation",
+  "record_type": "Investigation",
+  "doi": "10.60555/e9xp-ex83",
+  "doi_url": "https://doi.org/10.60555/e9xp-ex83",
+  "objectives": "Develop and validate unsteady flamelet generated manifold (UFGM) models for concurrent flame spread in microgravity, using BASS data to improve predictions of material flammability limits.",
+  "approach": "Couple fluid/solid combustion simulations with unsteady flamelet-generated chemistry models. Use geometries from BASS/BASS-II (sheets, spheres, PMMA rods, and wax cylinders) and apply two-color tomography to archived flame imagery to compare predicted geometry, soot, temperature, and spread rates.",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-62"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-62",
+  "csv_files": [],
+  "status_message": "No data available for this investigation yet. Graphs cannot be generated."
+}

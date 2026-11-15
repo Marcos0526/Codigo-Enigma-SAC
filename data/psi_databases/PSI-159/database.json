@@ -1,0 +1,30 @@
+{
+  "psi_id": "PSI-159",
+  "title": "ACME — Cool Flames Investigation with Gases (CFI-G)",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Flames of Gaseous Fuels",
+  "scientific_focus": "Low-temperature oxidation; gaseous cool flames",
+  "project_setting": "ISS microgravity experiment",
+  "record_type": "Investigation",
+  "doi": "10.60555/cyt1-kh64",
+  "doi_url": "https://doi.org/10.60555/cyt1-kh64",
+  "objectives": "Observe stable low-temperature, nonpremixed cool flames of gaseous fuels and characterize chemical regimes that are obscured by buoyancy on Earth.",
+  "approach": "Establish nonpremixed gaseous flames in the ACME combustion facility with gravity-driven flow suppressed. Vary reactant composition and operating conditions to study weak, low-temperature flame structures.",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-159"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    },
+    {
+      "label": "NASA background",
+      "url": "https://www.nasa.gov/humans-in-space/space-stations-quest-for-the-secrets-of-fire/"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-159",
+  "csv_files": [],
+  "status_message": "No data available for this investigation yet. Graphs cannot be generated."
+}

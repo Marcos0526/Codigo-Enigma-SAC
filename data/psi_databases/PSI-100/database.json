@@ -1,0 +1,54 @@
+{
+  "psi_id": "PSI-100",
+  "title": "Spacecraft Fire Safety Experiment — III (SAFFIRE-III)",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Spacecraft Fire Safety",
+  "scientific_focus": "Spacecraft fire safety; flow-dependent flame spread",
+  "project_setting": "Microgravity experiment; uncrewed Cygnus spacecraft",
+  "record_type": "Investigation",
+  "doi": "10.60555/040q-4h36",
+  "doi_url": "https://doi.org/10.60555/040q-4h36",
+  "objectives": "Extend the large-scale fabric-burning study from SAFFIRE-I by examining flame behavior at a different ventilation condition.",
+  "approach": "Burn a large fabric panel in a controlled airflow duct after Cygnus departs the ISS. Compare flame spread, heat release, and growth with SAFFIRE-I conditions.",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-100"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    },
+    {
+      "label": "NASA background",
+      "url": "https://www.nasa.gov/physical-sciences-informatics-psi/psi-investigations-by-research-area/"
+    },
+    {
+      "label": "NASA background",
+      "url": "https://www.nasa.gov/centers-and-facilities/glenn/flame-burns-out-on-nasas-long-running-spacecraft-fire-experiment/"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-100",
+  "csv_files": [
+    {
+      "path": "Saffire III Sample 1 Sensors.xlsx",
+      "description": "Dataset file: Saffire III Sample 1 Sensors.xlsx",
+      "format": "xlsx"
+    },
+    {
+      "path": "Saffire III Sample 2 Sensors.xlsx",
+      "description": "Dataset file: Saffire III Sample 2 Sensors.xlsx",
+      "format": "xlsx"
+    },
+    {
+      "path": "Raw telemetry file.csv",
+      "description": "Dataset file: Raw telemetry file.csv",
+      "format": "csv"
+    },
+    {
+      "path": "Saffire_Data_Table2017.161.00.42.03-EU.csv",
+      "description": "Dataset file: Saffire_Data_Table2017.161.00.42.03-EU.csv",
+      "format": "csv"
+    }
+  ]
+}

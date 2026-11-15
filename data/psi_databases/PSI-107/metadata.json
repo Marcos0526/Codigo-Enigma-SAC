@@ -1,0 +1,26 @@
+{
+  "psi_id": "PSI-107",
+  "title": "Smoke Point in Co-flow Experiment (SPICE)",
+  "research_area": "Combustion Science",
+  "subresearch_area": "Fire Safety",
+  "scientific_focus": "Fire Safety",
+  "project_setting": "Microgravity Investigation; ISS",
+  "record_type": "Investigation",
+  "doi": "10.60555/9kbh-e962",
+  "doi_url": "https://doi.org/10.60555/9kbh-e962",
+  "objectives": "Identify smoke-point properties of nonbuoyant laminar jet diffusion flames, including the effect of burner diameter and coflow velocity on luminous flame length and smoke onset.",
+  "approach": "Study laminar coflow diffusion flames under microgravity and analogous ground conditions. Systematically change burner diameter and coflow velocity and analyze flame length and smoking behavior; NASA reports 526 flames studied. **The dedicated Approach field was not present in the accessible PSI text; this is a methodology summary based on the objectives.**",
+  "sources": [
+    {
+      "label": "NASA PSI investigation record",
+      "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-107"
+    },
+    {
+      "label": "PSI accession/DOI archive",
+      "url": "https://raw.githubusercontent.com/Krypton-N/NASA-SPACE-APPS/main/data/psi/psi_index.csv"
+    }
+  ],
+  "folder_path": "data/psi_databases/PSI-107",
+  "csv_files": [],
+  "status_message": "No data available for this investigation yet. Graphs cannot be generated."
+}
