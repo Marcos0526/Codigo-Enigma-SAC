@@ -28,7 +28,7 @@ services:
       pip install --no-cache-dir -r services/api/requirements.txt
       pip install --no-cache-dir -e packages/contracts
     startCommand: python -m uvicorn services.api.main:app --host 0.0.0.0 --port 8000
-    plan: 1c-2g
+    plan: standard
     healthCheckPath: /health
     envVars:
       - key: APP_ENV
@@ -61,11 +61,11 @@ services:
       - key: NVIDIA_API_BASE_URL
         value: https://integrate.api.nvidia.com/v1
       - key: LLM_PROVIDER
-        value: ${LLM_PROVIDER:-openai}
+        value: openai
       - key: LLM_API_KEY
         sync: false
       - key: LLM_MODEL
-        value: ${LLM_MODEL:-gpt-4-turbo-preview}
+        value: gpt-4-turbo-preview
       - key: LLM_MAX_TOKENS
         value: "2000"
       - key: LLM_TEMPERATURE
@@ -101,7 +101,7 @@ services:
       - key: RATE_LIMIT_RPM
         value: "60"
       - key: CORS_ORIGINS
-        value: ${RENDER_EXTERNAL_URL},http://localhost:3000,http://127.0.0.1:3000
+        value: https://enigma-sac-web.onrender.com,http://localhost:3000,http://127.0.0.1:3000
     preDeployCommand: bash infra/init-db/init_render.sh
 
   # ===========================================================================
@@ -122,11 +122,14 @@ services:
       - key: PORT
         value: "3000"
       - key: API_BACKEND_URL
-        value: http://enigma-sac-api:8000
+        fromService:
+          type: web
+          name: enigma-sac-api
+          property: hostport
       - key: SYNTHETIC_DATA_DIR
         value: /opt/render/project/data/synthetic
       - key: WEB_URL
-        value: ${RENDER_EXTERNAL_URL}
+        value: https://enigma-sac-web.onrender.com
     buildFilter:
       paths:
         - apps/web/**
@@ -139,9 +142,11 @@ services:
   # ===========================================================================
   - type: cron
     name: enigma-sac-catalog-ingest
+    runtime: python
     buildCommand: |
       pip install --no-cache-dir -r services/api/requirements.txt
       pip install --no-cache-dir -e packages/contracts
+    startCommand: python -m services.api.jobs.catalog_ingest
     schedule: "0 * * * *"
     envVars:
       - key: APP_ENV
@@ -158,7 +163,7 @@ services:
       - key: LLM_API_KEY
         sync: false
       - key: LLM_MODEL
-        value: ${LLM_MODEL}
+        value: gpt-4-turbo-preview
       - key: ALLOWED_DATA_DOMAINS
         value: psi.nasa.gov,raw.githubusercontent.com,data.nasa.gov
 
@@ -168,7 +173,7 @@ services:
   # ===========================================================================
   - type: keyvalue
     name: enigma-sac-redis
-    plan: 256mb
+    plan: starter
     ipAllowList:
       - source: 0.0.0.0/0
         description: everywhere
@@ -181,7 +186,7 @@ databases:
   # ===========================================================================
   - name: enigma-sac-db
     postgresMajorVersion: "16"
-    plan: 1c-2g
+    plan: standard
     databaseName: enigma_sac
     ipAllowList:
       - source: 0.0.0.0/0
