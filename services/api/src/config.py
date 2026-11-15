@@ -37,12 +37,15 @@ class Settings(BaseSettings):
     NVIDIA_INPUT_TYPE: str = "query"
 
     # LLM Service
-    LLM_PROVIDER: str = "openai"
+    LLM_PROVIDER: str = "openai"  # openai, anthropic, nvidia, local
     LLM_API_KEY: str = ""
     LLM_API_URL: str = ""
     LLM_MODEL: str = "gpt-4-turbo-preview"
     LLM_MAX_TOKENS: int = 2000
     LLM_TEMPERATURE: float = 0.1
+
+    # NVIDIA LLM (when using LLM_PROVIDER=nvidia)
+    NVIDIA_LLM_MODEL: str = "nvidia/llama-3.1-nemotron-70b-instruct"
 
     # Data Connectors
     ALLOWED_DATA_DOMAINS: str = "psi.nasa.gov,raw.githubusercontent.com,data.nasa.gov"

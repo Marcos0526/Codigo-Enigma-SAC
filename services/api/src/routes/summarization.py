@@ -193,6 +193,12 @@ async def generate_llm_summary(facts: dict, options: dict) -> str:
         return await generate_openai_summary(facts, options)
     elif settings.LLM_PROVIDER == "anthropic" and settings.LLM_API_KEY:
         return await generate_anthropic_summary(facts, options)
+    elif settings.LLM_PROVIDER == "nvidia" and settings.LLM_API_KEY:
+        try:
+            return await generate_nvidia_summary(facts, options)
+        except Exception as e:
+            logger.warning("nvidia_llm_failed_fallback", error=str(e))
+            return generate_descriptive_summary(facts)
     else:
         # Local/fallback
         return generate_descriptive_summary(facts)
@@ -301,6 +307,60 @@ Generate a summary with:
         response.raise_for_status()
         data = response.json()
         return data["content"][0]["text"]
+
+
+async def generate_nvidia_summary(facts: dict, options: dict) -> str:
+    """Generate summary using NVIDIA API (OpenAI-compatible)."""
+    import json
+
+    max_length = options.get("maxLength", 1000)
+
+    system_prompt = """You are a scientific data analyst. Generate a concise, evidence-based summary of a dataset using ONLY the provided verifiable facts.
+
+CRITICAL RULES:
+1. NEVER invent statistics, numbers, or findings not explicitly provided in the facts
+2. NEVER make claims beyond what the data supports
+3. Clearly distinguish between metadata (descriptions, tags) and computed statistics
+4. If statistics are not available, state this explicitly
+5. Include source references for every claim
+6. List limitations and warnings about unavailable information
+
+Format your response as structured text with clear sections."""
+
+    user_prompt = f"""Dataset Facts (VERIFIED - DO NOT INVENT ADDITIONAL INFORMATION):
+
+{json.dumps(facts, indent=2, default=str)}
+
+Generate a summary with:
+1. Title
+2. Executive Summary (2-3 sentences)
+3. Key Variables
+4. Coverage (temporal, geographic, row count)
+5. Findings (each with description, evidence, source)
+6. Limitations
+7. Warnings
+8. Sources"""
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.post(
+            f"{settings.NVIDIA_API_BASE_URL}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.LLM_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": settings.NVIDIA_LLM_MODEL,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "max_tokens": settings.LLM_MAX_TOKENS,
+                "temperature": settings.LLM_TEMPERATURE,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
 
 
 def generate_descriptive_summary(facts: dict) -> str:
