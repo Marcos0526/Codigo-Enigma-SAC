@@ -54,6 +54,33 @@ select { background: white; border: 1px solid var(--line); border-radius: 7px; d
 .chart-output { background: #17211b; border-radius: 8px; color: #d8efaa; font-size: 11px; margin-top: 18px; max-height: 220px; overflow: auto; padding: 14px; }
 .chart-container { background: white; border: 1px solid var(--line); border-radius: 14px; margin-top: 18px; min-height: 300px; position: relative; }
 .chart-renderer { height: 300px; width: 100%; }
+.explorer-intro { margin: -4px 0 18px; }
+.explorer-layout { display: grid; grid-template-columns: minmax(250px, 310px) minmax(0, 1fr); gap: 14px; }
+.explorer-controls { align-self: start; max-height: calc(100vh - 32px); overflow-y: auto; position: sticky; top: 16px; }
+.explorer-controls h3 { font-size: 15px; letter-spacing: 0; margin: 2px 0 12px; }
+.explorer-controls label:first-child { margin-top: 0; }
+.explorer-controls input[type="text"] { background: white; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); display: block; margin-top: 6px; padding: 10px; width: 100%; }
+.control-divider { border-top: 1px solid var(--line); margin: 20px 0 16px; }
+.range-control { margin: 16px 0; }
+.range-heading { align-items: center; display: flex; justify-content: space-between; gap: 10px; }
+.range-heading output { color: var(--green); font-variant-numeric: tabular-nums; }
+.range-control input[type="range"] { accent-color: var(--green); display: block; margin: 10px 0 0; padding: 0; width: 100%; }
+.toggle-list { display: grid; gap: 10px; margin-top: 16px; }
+.toggle-list label { align-items: center; display: flex; gap: 9px; margin: 0; }
+.toggle-list input { accent-color: var(--green); height: 15px; margin: 0; width: 15px; }
+.explorer-chart-panel { min-width: 0; }
+.explorer-chart-heading { align-items: flex-start; display: flex; justify-content: space-between; gap: 12px; }
+.explorer-chart-heading h3 { margin: 0; }
+.explorer-chart-heading p { margin: 7px 0 0; }
+.synthetic-chart { min-height: 360px; overflow: hidden; width: 100%; }
+.synthetic-chart .vega-embed { width: 100%; }
+.chart-hint { margin-bottom: 0; }
+.explorer-chart-panel .alert { margin-bottom: 12px; }
+.theme-ocean, .theme-sunset { border-color: #d7e2e6; }
+.theme-midnight { background: #111827; border-color: #344153; color: #e5e7eb; }
+.theme-midnight .muted { color: #aab6c5; }
+.theme-midnight .tag { background: #263445; color: #cbd5e1; }
+.theme-midnight .explorer-chart-heading .muted { color: #aab6c5; }
 .summary { margin-top: 14px; }
 .summary > p { line-height: 1.65; }
 .finding { border-left: 3px solid var(--lime); display: grid; gap: 4px; margin: 14px 0; padding-left: 12px; }
@@ -61,7 +88,8 @@ select { background: white; border: 1px solid var(--line); border-radius: 7px; d
 @media (max-width: 720px) {
   .shell { padding: 20px 14px 50px; }
   .hero { border-radius: 16px; padding: 36px 22px; }
-  .search-form, .workspace-grid { display: grid; grid-template-columns: 1fr; }
+  .search-form, .workspace-grid, .explorer-layout { display: grid; grid-template-columns: 1fr; }
   .search-form button { width: 100%; }
   .section-heading { align-items: start; flex-direction: column; }
+  .explorer-controls { max-height: none; position: static; }
 }

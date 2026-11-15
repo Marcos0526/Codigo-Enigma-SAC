@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState, useEffect, useRef } from "react";
 import embed, { VisualizationSpec } from "vega-embed";
+import SyntheticChartExplorer from "./synthetic-chart-explorer";
 
 type SearchResult = {
   id: string;
@@ -203,6 +204,8 @@ export default function HomePage() {
           ))}
         </div>
       </header>
+
+      <SyntheticChartExplorer />
 
       {error && <div className="alert error">{error}</div>}
 

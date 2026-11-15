@@ -18,6 +18,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY apps/web/ ./apps/web/
 COPY packages/contracts/ ./packages/contracts/
+COPY data/synthetic/ ./data/synthetic/
 
 # Generate Prisma client if needed
 # RUN npx prisma generate
@@ -35,6 +36,7 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/apps/web/public ./public
+COPY --from=builder /app/data/synthetic ./data/synthetic
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
 
@@ -44,5 +46,6 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV SYNTHETIC_DATA_DIR=/app/data/synthetic
 
 CMD ["node", "server.js"]
