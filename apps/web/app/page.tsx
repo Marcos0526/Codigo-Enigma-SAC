@@ -78,6 +78,7 @@ export default function HomePage() {
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [results, setResults] = useState<SearchResponse | null>(null);
+  const [showAllResults, setShowAllResults] = useState(false);
   const [selected, setSelected] = useState<SearchResult | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [schema, setSchema] = useState<DatasetSchema | null>(null);
@@ -171,10 +172,47 @@ export default function HomePage() {
       ),
     [schema],
   );
-  const rankedResults = useMemo(
-    () => [...(results?.datasets ?? [])].sort((a, b) => b.score - a.score),
-    [results],
-  );
+  const investigations = useMemo(() => {
+    const groups = new Map<string, SearchResult[]>();
+    const ranked = [...(results?.datasets ?? [])].sort(
+      (a, b) => b.score - a.score,
+    );
+    for (const dataset of ranked) {
+      const group = groups.get(dataset.psiId) ?? [];
+      group.push(dataset);
+      groups.set(dataset.psiId, group);
+    }
+    return Array.from(groups.entries())
+      .map(([psiId, datasets]) => {
+        const formatCounts = datasets.reduce<Record<string, number>>(
+          (counts, dataset) => {
+            const format = dataset.format.toUpperCase();
+            counts[format] = (counts[format] ?? 0) + 1;
+            return counts;
+          },
+          {},
+        );
+        return {
+          psiId,
+          title:
+            datasets[0].investigationTitle?.trim() || `${psiId} investigation`,
+          description: datasets[0].description,
+          url: datasets[0].url,
+          score: datasets[0].score,
+          datasets,
+          formats: Object.entries(formatCounts)
+            .map(([format, count]) => `${count} ${format}`)
+            .join(" · "),
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+  }, [results]);
+  const visibleInvestigations = showAllResults
+    ? investigations
+    : investigations.slice(0, 3);
+  const selectedInvestigation = selected
+    ? investigations.find((item) => item.psiId === selected.psiId)
+    : undefined;
 
   function uploadLogo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -197,6 +235,7 @@ export default function HomePage() {
     setSearching(true);
     setError("");
     setResults(null);
+    setShowAllResults(false);
     setSelected(null);
     setSummary(null);
     setSchema(null);
@@ -514,7 +553,7 @@ export default function HomePage() {
         {searching
           ? "Searching for relevant datasets."
           : results
-            ? `${results.total_matches} matching datasets found.`
+            ? `${investigations.length} related investigations found.`
             : ""}
       </div>
 
@@ -524,8 +563,11 @@ export default function HomePage() {
             <div>
               <p className="eyebrow">RESEARCH MATCHES</p>
               <h2 id="results-title">
-                {results.total_matches}{" "}
-                {results.total_matches === 1 ? "dataset" : "datasets"} to
+                {investigations.length}{" "}
+                {investigations.length === 1
+                  ? "investigation"
+                  : "investigations"}{" "}
+                to
                 explore<span className="red-period">.</span>
               </h2>
             </div>
@@ -537,7 +579,7 @@ export default function HomePage() {
             similarity of meaning, rather than statistical correlation between
             measurements.
           </p>
-          {rankedResults.length === 0 ? (
+          {investigations.length === 0 ? (
             <div className="empty">
               <h3>No matching datasets found.</h3>
               <p>
@@ -546,50 +588,78 @@ export default function HomePage() {
               </p>
             </div>
           ) : (
-            <div className="results-grid">
-              {rankedResults.map((dataset, index) => (
-                <article
-                  className={`result-card ${selected?.id === dataset.id ? "selected" : ""}`}
-                  key={dataset.id}
-                >
-                  <div className="card-topline">
-                    <span className="result-rank">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <span className="tag">{dataset.psiId}</span>
-                    <span className="score">
-                      {dataset.score.toFixed(3)} relevance
-                    </span>
-                  </div>
-                  <h3>{dataset.name}</h3>
-                  <p>{dataset.description}</p>
-                  <div className="meta">
-                    <span>{dataset.format.toUpperCase()}</span>
-                    <span>
-                      {dataset.numericColumns.length} numerical variables
-                    </span>
-                  </div>
-                  <div className="card-actions">
-                    <a
-                      href={`https://psi.nasa.gov/physci/repo/data/investigations/${encodeURIComponent(dataset.psiId)}`}
-                      target="_blank"
-                      rel="noreferrer"
+            <>
+              <p className="results-visibility" role="status">
+                Showing {visibleInvestigations.length} of {investigations.length}{" "}
+                related investigations, with their data files grouped together.
+              </p>
+              <div className="results-grid" id="research-results-grid">
+                {visibleInvestigations.map((investigation, index) => {
+                  const isSelected = selected?.psiId === investigation.psiId;
+                  return (
+                    <article
+                      className={`result-card ${isSelected ? "selected" : ""}`}
+                      key={investigation.psiId}
                     >
-                      PSI investigation ↗
-                    </a>
-                    <button
-                      type="button"
-                      aria-pressed={selected?.id === dataset.id}
-                      onClick={() => selectDataset(dataset)}
-                    >
-                      {selected?.id === dataset.id
-                        ? "Selected ✓"
-                        : "Explore dataset"}
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
+                      <div className="card-topline">
+                        <span className="result-rank">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <span className="tag">{investigation.psiId}</span>
+                        <span className="score">
+                          {investigation.score.toFixed(3)} relevance
+                        </span>
+                      </div>
+                      <h3>{investigation.title}</h3>
+                      <p>{investigation.description}</p>
+                      <div className="dataset-file-summary">
+                        <strong>
+                          {investigation.datasets.length}{" "}
+                          {investigation.datasets.length === 1
+                            ? "data file"
+                            : "data files"}
+                        </strong>
+                        <span>{investigation.formats}</span>
+                      </div>
+                      <div className="card-actions">
+                        <a
+                          href={`https://psi.nasa.gov/physci/repo/data/investigations/${encodeURIComponent(investigation.psiId)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          PSI investigation ↗
+                        </a>
+                        <button
+                          type="button"
+                          aria-pressed={isSelected}
+                          onClick={() =>
+                            selectDataset(investigation.datasets[0])
+                          }
+                        >
+                          {isSelected
+                            ? "Selected ✓"
+                            : "Explore investigation"}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              {investigations.length > 3 && (
+                <div className="show-more-results">
+                  <button
+                    type="button"
+                    aria-expanded={showAllResults}
+                    aria-controls="research-results-grid"
+                    onClick={() => setShowAllResults((current) => !current)}
+                  >
+                    {showAllResults
+                      ? "Show fewer investigations ↑"
+                      : `Show ${investigations.length - 3} more investigations ↓`}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </section>
       )}
@@ -640,38 +710,51 @@ export default function HomePage() {
           {summary && (
             <div className="panel summary" aria-live="polite">
               <p className="eyebrow">EVIDENCE-BASED RESEARCH SUMMARY</p>
-              <MarkdownContent>{summary.executiveSummary}</MarkdownContent>
+              <div className="experiment-context">
+                <span>Experiment context · {selected.psiId}</span>
+                <h3>
+                  {selected.investigationTitle ?? `${selected.psiId} investigation`}
+                </h3>
+                <p>{selected.description}</p>
+              </div>
+              <div className="summary-scroll executive-summary">
+                <MarkdownContent>{summary.executiveSummary}</MarkdownContent>
+              </div>
               <details className="summary-evidence">
-                <summary>Dataset evidence &amp; data notes</summary>
-                {summary.keyVariables.length > 0 && (
-                  <p>
-                    <strong>Key variables</strong>
-                    <br />
-                    {summary.keyVariables.join(", ")}
-                  </p>
-                )}
-                {summary.findings.map((finding, index) => (
-                  <div className="finding" key={`${index}-${finding.source}`}>
-                    <strong>{finding.description}</strong>
-                    <span>
-                      {finding.evidence} · {finding.source}
-                    </span>
-                  </div>
-                ))}
-                {summary.limitations.length > 0 && (
-                  <p className="muted">
-                    <strong>Research limitations</strong>
-                    <br />
-                    {summary.limitations.join(" ")}
-                  </p>
-                )}
-                {summary.warnings.length > 0 && (
-                  <p className="muted">
-                    <strong>Data notes</strong>
-                    <br />
-                    {summary.warnings.join(" ")}
-                  </p>
-                )}
+                <summary>
+                  Dataset evidence &amp; findings ({summary.findings.length})
+                </summary>
+                <div className="summary-scroll evidence-scroll">
+                  {summary.keyVariables.length > 0 && (
+                    <p>
+                      <strong>Key variables</strong>
+                      <br />
+                      {summary.keyVariables.join(", ")}
+                    </p>
+                  )}
+                  {summary.findings.map((finding, index) => (
+                    <div className="finding" key={`${index}-${finding.source}`}>
+                      <strong>{finding.description}</strong>
+                      <span>
+                        {finding.evidence} · {finding.source}
+                      </span>
+                    </div>
+                  ))}
+                  {summary.limitations.length > 0 && (
+                    <p className="muted">
+                      <strong>Research limitations</strong>
+                      <br />
+                      {summary.limitations.join(" ")}
+                    </p>
+                  )}
+                  {summary.warnings.length > 0 && (
+                    <p className="muted">
+                      <strong>Data notes</strong>
+                      <br />
+                      {summary.warnings.join(" ")}
+                    </p>
+                  )}
+                </div>
               </details>
               <section
                 className="chat-section summary-chat"
@@ -769,6 +852,20 @@ export default function HomePage() {
         <DatasetChartExplorer
           key={selected.id}
           datasetId={selected.id}
+          datasets={(selectedInvestigation?.datasets ?? [selected]).map(
+            (dataset) => ({
+              id: dataset.id,
+              title: dataset.name,
+              investigation: dataset.psiId,
+              format: dataset.format,
+            }),
+          )}
+          onDatasetChange={(datasetId) => {
+            const nextDataset = selectedInvestigation?.datasets.find(
+              (dataset) => dataset.id === datasetId,
+            );
+            if (nextDataset) void selectDataset(nextDataset);
+          }}
           colorMode={colorMode}
         />
       )}

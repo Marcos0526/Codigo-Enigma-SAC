@@ -7,6 +7,7 @@ type DatasetOption = {
   id: string;
   title: string;
   investigation: string;
+  format?: string;
 };
 
 type Dataset = Pick<DatasetOption, "id" | "title"> & {
@@ -103,9 +104,13 @@ const chartTypes: Array<{ value: ChartType; label: string }> = [
 
 export default function DatasetChartExplorer({
   datasetId,
+  datasets = [],
+  onDatasetChange,
   colorMode = "dark",
 }: {
   datasetId: string;
+  datasets?: DatasetOption[];
+  onDatasetChange?: (datasetId: string) => void;
   colorMode?: "dark" | "light";
 }) {
   const [dataset, setDataset] = useState<Dataset | null>(null);
@@ -515,6 +520,26 @@ export default function DatasetChartExplorer({
           <p className="muted">
             Selected dataset: {dataset?.title ?? datasetId}
           </p>
+          {datasets.length > 1 && onDatasetChange && (
+            <label className="dataset-picker">
+              Dataset to visualize
+              <select
+                aria-label="Dataset to visualize"
+                value={datasetId}
+                onChange={(event) => onDatasetChange(event.target.value)}
+              >
+                {datasets.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.title}
+                    {option.format ? ` (${option.format.toUpperCase()})` : ""}
+                  </option>
+                ))}
+              </select>
+              <span className="dataset-picker-note">
+                {datasets.length} files available in {datasets[0].investigation}
+              </span>
+            </label>
+          )}
           <label>
             Chart type
             <select

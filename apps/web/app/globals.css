@@ -515,6 +515,61 @@ input::placeholder {
   font-size: 11px;
   padding: 11px 12px;
 }
+.results-visibility {
+  color: var(--muted);
+  font-size: 11px;
+  margin: -12px 0 18px;
+}
+.dataset-file-summary {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  justify-content: space-between;
+  padding-top: 14px;
+}
+.dataset-file-summary strong {
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+.dataset-file-summary span {
+  color: var(--soft-red);
+  font: 10px/1.5 monospace;
+}
+.show-more-results {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+.show-more-results button {
+  background: transparent;
+  border-color: #59303c;
+  color: var(--soft-red);
+  font-size: 11px;
+  padding: 11px 20px;
+}
+.show-more-results button:hover {
+  background: #25151b;
+}
+.dataset-picker {
+  background: #25151b;
+  border: 1px solid #49303b;
+  border-radius: 6px;
+  margin: 18px 0 22px;
+  padding: 12px;
+}
+.dataset-picker select {
+  margin-top: 8px;
+}
+.dataset-picker-note {
+  color: var(--muted);
+  display: block;
+  font-size: 10px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
 .alert {
   margin-top: 20px;
 }
@@ -1000,6 +1055,58 @@ select {
 }
 
 /* The summary and its Groq conversation share one research card. */
+.experiment-context {
+  background: #21151b;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  margin: 20px 0;
+  padding: 17px 20px;
+}
+.experiment-context > span {
+  color: var(--soft-red);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.experiment-context h3 {
+  font-size: 18px;
+  margin: 8px 0;
+}
+.experiment-context p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.75;
+  margin: 0;
+}
+.summary-scroll {
+  overscroll-behavior: contain;
+  overflow-y: auto;
+  padding-right: 12px;
+  scrollbar-color: #74404f transparent;
+  scrollbar-width: thin;
+}
+.executive-summary {
+  max-height: 360px;
+}
+.evidence-scroll {
+  margin-top: 16px;
+  max-height: 260px;
+}
+.evidence-scroll .finding {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 5px;
+  padding: 12px 0;
+}
+.evidence-scroll .finding strong {
+  font-size: 12px;
+}
+.evidence-scroll .finding span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
 .summary-chat {
   margin-top: 32px;
   padding-top: 28px;
@@ -1354,6 +1461,14 @@ select {
   background: #f4dbe5;
   color: #59243c;
   border-color: #d4a4b8;
+}
+:root[data-theme="light"] .dataset-picker,
+:root[data-theme="light"] .show-more-results button:hover {
+  background: #f9e6ed;
+  border-color: #ddb3c3;
+}
+:root[data-theme="light"] .experiment-context {
+  background: #fff0f5;
 }
 :root[data-theme="light"] .summary-chat {
   border-color: #dfc0cd;
