@@ -48,14 +48,16 @@ services:
         value: "32"
       - key: EMBEDDING_MAX_LENGTH
         value: "512"
-      - key: NVIDIA_API_BASE_URL
-        value: https://integrate.api.nvidia.com/v1
       - key: LLM_PROVIDER
         value: openai
+      - key: LLM_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: OPENAI_BASE_URL
+        value: https://api.groq.com/openai/v1
       - key: LLM_API_KEY
-        sync: false
+        sync: false # Paste your Groq API key (gsk_...) in the Render Dashboard
       - key: LLM_MODEL
-        value: gpt-4-turbo-preview
+        value: llama-3.3-70b-versatile
       - key: LLM_MAX_TOKENS
         value: "2000"
       - key: LLM_TEMPERATURE
@@ -158,10 +160,16 @@ services:
   #         type: keyvalue
   #         name: enigma-sac-redis
   #         property: connectionString
+  #     - key: LLM_PROVIDER
+  #       value: openai
+  #     - key: LLM_BASE_URL
+  #       value: https://api.groq.com/openai/v1
+  #     - key: OPENAI_BASE_URL
+  #       value: https://api.groq.com/openai/v1
   #     - key: LLM_API_KEY
   #       sync: false
   #     - key: LLM_MODEL
-  #       value: gpt-4-turbo-preview
+  #       value: llama-3.3-70b-versatile
   #     - key: ALLOWED_DATA_DOMAINS
   #       value: psi.nasa.gov,raw.githubusercontent.com,data.nasa.gov
 
