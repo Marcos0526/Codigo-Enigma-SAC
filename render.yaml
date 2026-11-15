@@ -1,19 +1,9 @@
 # Render deployment configuration for Enigma SAC
 # Semantic Data Discovery & Interactive Dashboards
 #
-# For detailed setup instructions:
-# 1. Create required secrets in Render Dashboard (LLM_API_KEY)
-# 2. Render will auto-populate DATABASE_URL and REDIS_URL
-# 3. Use the preDeployCommand to initialize the database with extensions
-#
-# Required environment variables to set in Render dashboard AFTER deployment:
-#   - LLM_API_KEY: Your OpenAI API key (or other LLM provider key)
-#   - LLM_MODEL: The model to use (default: gpt-4-turbo-preview)
-#
-# Auto-populated environment variables (set by Render automatically):
-#   - DATABASE_URL: PostgreSQL connection string
-#   - REDIS_URL: Redis connection string
-#   - RENDER_EXTERNAL_URL: Your deployed site's URL (used for CORS)
+# Free-tier deployment configuration (no credit card required).
+# Note: Free Postgres expires after 30 days, and Free Web Services spin down
+# after 15 minutes of inactivity.
 
 services:
   # ===========================================================================
@@ -28,7 +18,7 @@ services:
       pip install --no-cache-dir -r services/api/requirements.txt
       pip install --no-cache-dir -e packages/contracts
     startCommand: python -m uvicorn services.api.main:app --host 0.0.0.0 --port 8000
-    plan: standard
+    plan: free
     healthCheckPath: /health
     envVars:
       - key: APP_ENV
@@ -114,7 +104,7 @@ services:
     runtime: node
     buildCommand: npm run build --workspace=apps/web
     startCommand: npm run start --workspace=apps/web
-    plan: starter
+    plan: free
     healthCheckPath: /
     envVars:
       - key: NODE_ENV
@@ -122,10 +112,7 @@ services:
       - key: PORT
         value: "3000"
       - key: API_BACKEND_URL
-        fromService:
-          type: web
-          name: enigma-sac-api
-          property: hostport
+        value: https://enigma-sac-api.onrender.com
       - key: SYNTHETIC_DATA_DIR
         value: /opt/render/project/data/synthetic
       - key: WEB_URL
@@ -137,58 +124,57 @@ services:
         - data/synthetic/**
 
   # ===========================================================================
-  # Cron Job: Periodic Catalog Ingestion
-  # Ingests new datasets from NASA PSI catalog every hour
-  # ===========================================================================
-  - type: cron
-    name: enigma-sac-catalog-ingest
-    runtime: python
-    buildCommand: |
-      pip install --no-cache-dir -r services/api/requirements.txt
-      pip install --no-cache-dir -e packages/contracts
-    startCommand: python -m services.api.jobs.catalog_ingest
-    schedule: "0 * * * *"
-    envVars:
-      - key: APP_ENV
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: enigma-sac-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: enigma-sac-redis
-          property: connectionString
-      - key: LLM_API_KEY
-        sync: false
-      - key: LLM_MODEL
-        value: gpt-4-turbo-preview
-      - key: ALLOWED_DATA_DOMAINS
-        value: psi.nasa.gov,raw.githubusercontent.com,data.nasa.gov
-
-  # ===========================================================================
   # Redis Cache (Render Key Value)
-  # For session storage and rate limiting
+  # Free tier is in-memory only (ephemeral on restart)
   # ===========================================================================
   - type: keyvalue
     name: enigma-sac-redis
-    plan: starter
+    plan: free
     ipAllowList:
       - source: 0.0.0.0/0
         description: everywhere
+
+  # ===========================================================================
+  # Cron Job: Periodic Catalog Ingestion (DISABLED FOR FREE TIER)
+  # Render does not offer a free plan for Cron Jobs; uncomment only if you add
+  # a payment method. Alternatively, trigger an API endpoint via GitHub Actions.
+  # ===========================================================================
+  # - type: cron
+  #   name: enigma-sac-catalog-ingest
+  #   runtime: python
+  #   buildCommand: |
+  #     pip install --no-cache-dir -r services/api/requirements.txt
+  #     pip install --no-cache-dir -e packages/contracts
+  #   startCommand: python -m services.api.jobs.catalog_ingest
+  #   schedule: "0 * * * *"
+  #   envVars:
+  #     - key: APP_ENV
+  #       value: production
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: enigma-sac-db
+  #         property: connectionString
+  #     - key: REDIS_URL
+  #       fromService:
+  #         type: keyvalue
+  #         name: enigma-sac-redis
+  #         property: connectionString
+  #     - key: LLM_API_KEY
+  #       sync: false
+  #     - key: LLM_MODEL
+  #       value: gpt-4-turbo-preview
+  #     - key: ALLOWED_DATA_DOMAINS
+  #       value: psi.nasa.gov,raw.githubusercontent.com,data.nasa.gov
 
 databases:
   # ===========================================================================
   # PostgreSQL Database (Render Managed)
-  # With pgvector extension for vector similarity search
-  # Note: Render Postgres supports pgvector extension
+  # Free tier: 1 GB storage, expires after 30 days, no pgbouncer pooling
   # ===========================================================================
   - name: enigma-sac-db
     postgresMajorVersion: "16"
-    plan: standard
+    plan: free
     databaseName: enigma_sac
     ipAllowList:
       - source: 0.0.0.0/0
         description: everywhere
-    connectionPool: pgbouncer
