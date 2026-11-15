@@ -2,6 +2,10 @@
 
 > **Status:** working local-data prototype · **API version:** 1.0.0
 
+- **Web application:** [Open ENIGMA / SAC](https://enigma-sac-web.salmonsky-e6e1f79d.northcentralus.azurecontainerapps.io/)
+- **Presentation video:** [Watch the project presentation](https://youtu.be/GprnQqFB32E)
+- **Project prompts:** [View the prompts used in this project](https://drive.google.com/drive/folders/17h7B8KV4q6w8Ew1mWJt2bkOlWS2Hkh7p?usp=sharing)
+
 ENIGMA / SAC is a web research workspace for the NASA Physical Sciences Informatics (PSI) Combustion Science collection. It turns a natural-language research question into:
 
 1. **Semantic search** over locally stored NASA PSI investigation files.
