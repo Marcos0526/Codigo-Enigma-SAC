@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState, useEffect, useRef } from "react";
-import embed from "vega-embed";
+import embed, { VisualizationSpec } from "vega-embed";
 
 type SearchResult = {
   id: string;
@@ -71,8 +71,13 @@ export default function HomePage() {
 
   useEffect(() => {
     if (chart && chartContainerRef.current) {
-      const spec = chart.spec as object;
-      embed(chartContainerRef.current, spec, { actions: false, mode: "vega-lite" }).catch(console.error);
+      const spec = chart.spec as VisualizationSpec;
+      // Include data from API response in the spec
+      const specWithData = {
+        ...spec,
+        data: { values: chart.data as unknown[] }
+      } as VisualizationSpec;
+      embed(chartContainerRef.current, specWithData, { actions: false, mode: "vega-lite" }).catch(console.error);
     }
   }, [chart]);
 
