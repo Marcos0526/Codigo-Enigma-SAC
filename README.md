@@ -1,6 +1,6 @@
 # ENIGMA / SAC — NASA PSI Combustion Research Workspace
 
-> **Status:** working local-data prototype · **API version:** 1.0.0
+> **Status:** finished · **version:** 1.1.0
 
 - **Web application:** [Open ENIGMA / SAC](https://enigma-sac-web.salmonsky-e6e1f79d.northcentralus.azurecontainerapps.io/)
 - **Presentation video:** [Watch the project presentation](https://youtu.be/GprnQqFB32E)
