@@ -85,8 +85,8 @@ async def get_dataset_schema(
 
         # Get profile info
         profile_query = """
-            SELECT row_count, byte_size, profiled_at, profile_version
-            FROM dataset_profiles
+            SELECT row_count, byte_size, (to_jsonb(dp)->>'profiled_at')::timestamptz AS profiled_at, profile_version
+            FROM dataset_profiles dp
             WHERE dataset_id = (SELECT id FROM datasets WHERE dataset_id = $1)
         """
         profile = await conn.fetchrow(profile_query, dataset_id)

@@ -7,6 +7,7 @@ import redis.asyncio as redis
 import httpx
 import structlog
 
+from services.search.src.embedding.http_client import embed_text
 from services.api.src.config import settings
 from services.api.src.database import get_db_session
 
@@ -42,13 +43,17 @@ async def health_check(
 
     # Check embedding service
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(f"{settings.EMBEDDING_API_URL.replace('/embed', '')}/health")
-            if response.status_code == 200:
-                services["embedding"] = {"status": "healthy"}
-            else:
-                services["embedding"] = {"status": "degraded", "details": {"status_code": response.status_code}}
-                overall_status = "degraded" if overall_status == "healthy" else overall_status
+        if settings.EMBEDDING_PROVIDER.lower() == "nvidia":
+            await embed_text("health check", settings, input_type="query")
+            services["embedding"] = {"status": "healthy", "provider": "nvidia", "model": settings.EMBEDDING_MODEL}
+        else:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{settings.EMBEDDING_API_URL.replace('/embed', '')}/health")
+                if response.status_code == 200:
+                    services["embedding"] = {"status": "healthy"}
+                else:
+                    services["embedding"] = {"status": "degraded", "details": {"status_code": response.status_code}}
+                    overall_status = "degraded" if overall_status == "healthy" else overall_status
     except Exception as e:
         services["embedding"] = {"status": "unhealthy", "details": {"error": str(e)}}
         overall_status = "degraded" if overall_status == "healthy" else "unhealthy"

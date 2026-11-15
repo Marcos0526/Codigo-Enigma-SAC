@@ -3,12 +3,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-import httpx
 import structlog
 import time
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
+from services.search.src.embedding.http_client import embed_text
 from services.api.src.config import settings
 from services.api.src.database import get_db_session
 
@@ -151,15 +151,8 @@ async def search_datasets(
 
 
 async def generate_embedding(text: str) -> List[float]:
-    """Generate embedding for query text."""
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            settings.EMBEDDING_API_URL,
-            json={"texts": [text]},
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data["embeddings"][0]
+    """Generate a query embedding with the configured provider."""
+    return await embed_text(text, settings, input_type="query")
 
 
 async def vector_search(
@@ -193,20 +186,20 @@ async def vector_search(
             d.description,
             d.url,
             d.format,
-            d.numeric_columns,
-            1 - (de.embedding <=> $1) AS score,
+            ARRAY(SELECT jsonb_array_elements_text(to_jsonb(d.numeric_columns))) AS numeric_columns,
+            1 - (de.embedding <=> $1::vector) AS score,
             pi.title AS investigation_title,
             d.verification_status
         FROM datasets d
         JOIN dataset_embeddings de ON de.dataset_id = d.id
         JOIN psi_investigations pi ON pi.psi_id = d.psi_id
-        WHERE 1 - (de.embedding <=> $1) >= $2
+        WHERE 1 - (de.embedding <=> $1::vector) >= $2
           AND d.verification_status = 'verified'
           AND d.numeric_columns IS NOT NULL
-          AND array_length(d.numeric_columns, 1) > 0
+          AND jsonb_array_length(to_jsonb(d.numeric_columns)) > 0
           {psi_filter}
           {ver_filter}
-        ORDER BY de.embedding <=> $1
+        ORDER BY de.embedding <=> $1::vector
         LIMIT $3
     """
 

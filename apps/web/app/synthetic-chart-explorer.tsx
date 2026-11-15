@@ -82,9 +82,7 @@ const chartTypes: Array<{ value: ChartType; label: string }> = [
   { value: "heatmap", label: "Heatmap" }
 ];
 
-export default function SyntheticChartExplorer() {
-  const [datasets, setDatasets] = useState<DatasetOption[]>([]);
-  const [datasetId, setDatasetId] = useState("");
+export default function SyntheticChartExplorer({ datasetId }: { datasetId: string }) {
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [chartType, setChartType] = useState<ChartType>("scatter");
   const [xAxis, setXAxis] = useState("");
@@ -104,32 +102,6 @@ export default function SyntheticChartExplorer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const chartContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/synthetic-data", { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`Could not load datasets (${response.status}).`);
-        return (await response.json()) as DatasetOption[];
-      })
-      .then((items) => {
-        setDatasets(items);
-        if (items.length) {
-          setDatasetId(items[0].id);
-        } else {
-          setError("No synthetic datasets are available.");
-          setLoading(false);
-        }
-      })
-      .catch((requestError: unknown) => {
-        if (!controller.signal.aborted) {
-          setError(requestError instanceof Error ? requestError.message : "Could not load datasets.");
-          setLoading(false);
-        }
-      });
-
-    return () => controller.abort();
-  }, []);
 
   useEffect(() => {
     if (!datasetId) return;
@@ -378,9 +350,9 @@ export default function SyntheticChartExplorer() {
       <div className="section-heading">
         <div>
           <p className="eyebrow">SYNTHETIC DATA EXPLORER</p>
-          <h2>Graph the repository datasets.</h2>
+          <h2>Graph the selected dataset.</h2>
         </div>
-        <span className="status">{datasets.length} datasets · no API setup needed</span>
+        <span className="status">Synthetic test data</span>
       </div>
       <p className="muted explorer-intro">
         Explore the CSV files in <code>data/synthetic</code>. Tune the chart, sample size, and design;
@@ -390,16 +362,7 @@ export default function SyntheticChartExplorer() {
       <div className="explorer-layout">
         <div className="panel explorer-controls">
           <h3>Data &amp; chart</h3>
-          <label>
-            Dataset
-            <select value={datasetId} onChange={(event) => setDatasetId(event.target.value)}>
-              {datasets.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.investigation} · {item.title}
-                </option>
-              ))}
-            </select>
-          </label>
+          <p className="muted">Selected dataset: {dataset?.title ?? datasetId}</p>
           <label>
             Chart type
             <select value={chartType} onChange={(event) => changeChartType(event.target.value as ChartType)}>

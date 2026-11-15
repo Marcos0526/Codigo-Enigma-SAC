@@ -34,17 +34,13 @@ The data is generated using `scripts/generate_synthetic_data.py` with realistic 
 
 ## Ingestion
 
-To ingest into the database with embeddings:
+Run from the repository root. The loader reads `DATABASE_URL`, `EMBEDDING_API_URL`, and model metadata from `.env` (environment variables override them). Start PostgreSQL and the embedding service before loading:
 
 ```bash
-# Start services first
-docker-compose -f infra/docker-compose.yml up -d
-
-# Wait for services to be healthy, then:
-export DATABASE_URL=postgresql://enigma:enigma@localhost:5432/enigma_sac
-export EMBEDDING_API_URL=http://localhost:8080/embed
-python scripts/ingest_synthetic_data.py
+python3 scripts/ingest_synthetic_data.py
 ```
+
+The loader seeds the 26 investigation records and loads all ten synthetic datasets, column statistics, profiles, and embeddings in one transaction. Repeating the command updates existing datasets without duplicating them. It supports both the SQL initialization schema (`TEXT[]`) and the older ORM schema (`JSONB`). A failed load rolls back the whole transaction. These files are development data, not NASA experimental measurements.
 
 ## Testing Search
 

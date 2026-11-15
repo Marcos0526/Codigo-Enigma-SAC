@@ -1,3 +1,36 @@
+## Nemotron 3.5 embedding configuration
+
+Edit the root `.env` (keep the real key out of Git):
+
+```dotenv
+EMBEDDING_PROVIDER=nvidia
+EMBEDDING_API_KEY=your_nvidia_key
+EMBEDDING_MODEL=nvidia/nemotron-3.5-embed-1b
+NVIDIA_API_BASE_URL=https://integrate.api.nvidia.com/v1
+EMBEDDING_DIMENSIONS=384
+```
+
+The API and synthetic loader call `/v1/embeddings` with Bearer authentication.
+Queries use `input_type=query`; indexed dataset descriptions use `input_type=passage`.
+384 output dimensions keep the current `vector(384)` index compatible. The model
+supports reduced dimensions from 128 through its native 2048 dimensions.
+
+After saving the configuration, regenerate **all** catalog embeddings before restarting the API:
+
+```bash
+python3 scripts/ingest_synthetic_data.py
+python3 -m uvicorn services.api.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Do not compare Nemotron query vectors with the existing MiniLM document vectors,
+even when both contain 384 values. Ingestion is transactional: an API failure
+leaves the previous index intact. The current sample catalog contains ten datasets;
+if you add other datasets, re-index those with the same model too.
+
+Reference: https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3_5-embed-1b-infer
+
+---
+
 # NVIDIA Embedding API Setup
 
 This guide shows how to configure the Enigma SAC system to use NVIDIA's embedding API.

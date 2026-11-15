@@ -12,7 +12,8 @@ This script:
 import asyncio
 import hashlib
 import json
-import os
+import re
+import uuid
 import sys
 from pathlib import Path
 from typing import Optional
@@ -26,6 +27,7 @@ import asyncpg
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from services.search.src.embedding.http_client import embed_text
 from services.search.src.config import settings
 from services.catalog.src.models.catalog import (
     DataFormat,
@@ -267,16 +269,8 @@ def compute_column_statistics(series: pd.Series, col_type: ColumnType) -> Option
 
 
 async def get_embedding(text: str, embedding_api_url: str) -> list[float]:
-    """Get embedding from the embedding service."""
-    import httpx
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            embedding_api_url,
-            json={"texts": [text]},
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data["embeddings"][0]
+    """Index documents as passages; searches use query embeddings."""
+    return await embed_text(text, settings, input_type="passage", api_url=embedding_api_url)
 
 
 async def ingest_dataset(
@@ -323,55 +317,55 @@ async def ingest_dataset(
     # Build file URL (local path)
     file_url = f"file://{filepath.absolute()}"
 
-    # Insert dataset
-    try:
-        dataset_row = await conn.fetchrow(
-            """
-            INSERT INTO datasets (
-                dataset_id, psi_id, name, description, url, url_type, format,
-                numeric_columns, source, license, access_policy,
-                coverage_temporal, coverage_geographic, catalog_version,
-                embedding_model, embedding_version, verification_status,
-                verified_at, tags, provenance_investigation_url,
-                provenance_dataset_url
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
-            ON CONFLICT (dataset_id) DO UPDATE SET
-                name = EXCLUDED.name,
-                description = EXCLUDED.description,
-                url = EXCLUDED.url,
-                url_type = EXCLUDED.url_type,
-                format = EXCLUDED.format,
-                numeric_columns = EXCLUDED.numeric_columns,
-                verification_status = EXCLUDED.verification_status,
-                verified_at = EXCLUDED.verified_at,
-                updated_at = NOW()
-            RETURNING id
-            """,
-            dataset_id,
-            metadata["psi_id"],
-            metadata["name"],
-            metadata["description"],
-            file_url,
-            metadata["url_type"].value,
-            metadata["format"].value,
-            detection.numeric_columns,
-            metadata["source"],
-            metadata["license"],
-            metadata["access_policy"].value,
-            metadata["coverage_temporal"],
-            metadata["coverage_geographic"],
-            CATALOG_VERSION,
-            EMBEDDING_MODEL,
-            EMBEDDING_VERSION,
-            VerificationStatus.VERIFIED.value,
-            None,  # verified_at
-            metadata["tags"],
-            f"https://psi.nasa.gov/physci/repo/data/investigations/{metadata['psi_id']}",
-            file_url,
+    # Support both the SQL initialization schema and the older ORM schema.
+    column_types = {
+        row["column_name"]: row["data_type"]
+        for row in await conn.fetch(
+            "SELECT column_name, data_type FROM information_schema.columns "
+            "WHERE table_schema = current_schema() AND table_name = 'datasets'"
         )
-    except Exception as e:
-        logger.error("dataset_insert_failed", dataset_id=dataset_id, error=str(e))
-        return False
+    }
+    existing_id = await conn.fetchval(
+        "SELECT id FROM datasets WHERE dataset_id = $1", dataset_id
+    )
+    record_id = existing_id or uuid.uuid4()
+    if column_types["id"] != "uuid":
+        record_id = str(record_id)
+
+    values = {
+        "id": record_id,
+        "dataset_id": dataset_id,
+        "psi_id": metadata["psi_id"],
+        "name": metadata["name"],
+        "description": metadata["description"],
+        "url": file_url,
+        "url_type": metadata["url_type"].value,
+        "format": metadata["format"].value,
+        "numeric_columns": detection.numeric_columns,
+        "source": metadata["source"],
+        "license": metadata["license"],
+        "access_policy": metadata["access_policy"].value,
+        "coverage_temporal": metadata["coverage_temporal"],
+        "coverage_geographic": metadata["coverage_geographic"],
+        "catalog_version": CATALOG_VERSION,
+        "embedding_model": EMBEDDING_MODEL,
+        "embedding_version": EMBEDDING_VERSION,
+        "verification_status": VerificationStatus.VERIFIED.value,
+        "tags": metadata["tags"],
+        "provenance_investigation_url": f"https://psi.nasa.gov/physci/repo/data/investigations/{metadata['psi_id']}",
+        "provenance_dataset_url": file_url,
+    }
+    for column in ("numeric_columns", "tags"):
+        if column_types[column] in ("json", "jsonb"):
+            values[column] = json.dumps(values[column])
+    columns = list(values)
+    placeholders = ", ".join(f"${i}" for i in range(1, len(columns) + 1))
+    updates = ", ".join(f"{column} = EXCLUDED.{column}" for column in columns if column != "id")
+    dataset_row = await conn.fetchrow(
+        f"INSERT INTO datasets ({', '.join(columns)}) VALUES ({placeholders}) "
+        f"ON CONFLICT (id) DO UPDATE SET {updates}, updated_at = NOW() RETURNING id",
+        *values.values(),
+    )
 
     dataset_db_id = dataset_row["id"]
     logger.info("dataset_inserted", dataset_id=dataset_id, db_id=dataset_db_id)
@@ -418,6 +412,16 @@ async def ingest_dataset(
             )
         except Exception as e:
             logger.error("schema_insert_failed", dataset_id=dataset_id, column=col, error=str(e))
+            raise
+
+    warnings_type = await conn.fetchval(
+        "SELECT data_type FROM information_schema.columns "
+        "WHERE table_schema = current_schema() AND table_name = 'dataset_profiles' "
+        "AND column_name = 'warnings'"
+    )
+    profile_warnings = detection.warnings
+    if warnings_type in ("text", "json", "jsonb"):
+        profile_warnings = json.dumps(profile_warnings)
 
     # Insert profile
     try:
@@ -441,10 +445,11 @@ async def ingest_dataset(
             len(df.columns),
             "1.0.0",
             None,
-            detection.warnings,
+            profile_warnings,
         )
     except Exception as e:
         logger.error("profile_insert_failed", dataset_id=dataset_id, error=str(e))
+        raise
 
     # Insert embedding
     try:
@@ -473,28 +478,44 @@ async def ingest_dataset(
     return True
 
 
+async def seed_investigations(conn):
+    """Load the repository's investigation metadata for either catalog schema."""
+    seed_sql = (Path(__file__).parent.parent / "infra/init-db/02-seed-psi-investigations.sql").read_text()
+    full_schema = await conn.fetchval(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.columns "
+        "WHERE table_schema = current_schema() AND table_name = 'psi_investigations' "
+        "AND column_name = 'research_area')"
+    )
+    if full_schema:
+        await conn.execute(seed_sql)
+        return
+    # The legacy table stores only identifiers, titles, descriptions and sector.
+    pattern = r"\(\s*'(PSI-\d+)',\s*'((?:[^']|'')*)',\s*'((?:[^']|'')*)'"
+    investigations = re.findall(pattern, seed_sql)
+    if len(investigations) != 26:
+        raise ValueError("Expected 26 investigations in the repository seed")
+    for psi_id, title, description in investigations:
+        await conn.execute(
+            "INSERT INTO psi_investigations (psi_id, title, description, sector) "
+            "VALUES ($1, $2, $3, $4) ON CONFLICT (psi_id) DO NOTHING",
+            psi_id, title.replace("''", "'"), description.replace("''", "'"), "Combustion Science",
+        )
+
+
 async def main():
-    """Main ingestion function."""
-    # Get database URL from environment or use default
-    database_url = os.getenv("DATABASE_URL", "postgresql://enigma:enigma@localhost:5432/enigma_sac")
-    embedding_api_url = os.getenv("EMBEDDING_API_URL", "http://localhost:8080/embed")
-
-    logger.info("starting_synthetic_data_ingestion", 
-                database_url=database_url,
-                embedding_api_url=embedding_api_url)
-
-    # Connect to database
+    """Load all test datasets atomically; fail instead of leaving partial data."""
+    database_url = settings.DATABASE_URL
+    embedding_api_url = settings.EMBEDDING_API_URL
+    logger.info("starting_synthetic_data_ingestion", embedding_model=EMBEDDING_MODEL)
     conn = await asyncpg.connect(database_url)
-    await register_vector(conn)
-
     try:
-        success_count = 0
-        for metadata in DATASET_METADATA:
-            success = await ingest_dataset(conn, metadata, embedding_api_url)
-            if success:
-                success_count += 1
-
-        logger.info("ingestion_complete", successful=success_count, total=len(DATASET_METADATA))
+        await register_vector(conn)
+        async with conn.transaction():
+            await seed_investigations(conn)
+            for metadata in DATASET_METADATA:
+                if not await ingest_dataset(conn, metadata, embedding_api_url):
+                    raise RuntimeError(f"Ingestion failed: {metadata['dataset_id']}")
+        logger.info("ingestion_complete", successful=len(DATASET_METADATA), total=len(DATASET_METADATA))
     finally:
         await conn.close()
 

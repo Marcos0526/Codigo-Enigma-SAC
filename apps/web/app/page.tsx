@@ -40,7 +40,7 @@ type ChatCompletionResponse = {
   choices: Array<{ message: { content: string } }>;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+const API_URL = "/api/v1";
 const examples = [
   "Find numerical datasets about combustion temperature measurements in microgravity.",
   "Show datasets about flame extinction and spacecraft fire safety.",
@@ -128,6 +128,9 @@ export default function HomePage() {
 
   async function selectDataset(dataset: SearchResult) {
     setSelected(dataset);
+    setSchema(null);
+    setXAxis("");
+    setYAxis("");
     setSummary(null);
     setChart(null);
     setError("");
@@ -275,8 +278,6 @@ export default function HomePage() {
         </div>
       </header>
 
-      <SyntheticChartExplorer />
-
       {error && <div className="alert error">{error}</div>}
 
       {results && (
@@ -358,6 +359,8 @@ export default function HomePage() {
           )}
         </section>
       )}
+
+      {selected && <SyntheticChartExplorer key={selected.id} datasetId={selected.id} />}
 
       <section className="section chat-section">
         <div className="section-heading">

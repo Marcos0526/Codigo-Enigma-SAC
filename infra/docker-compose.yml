@@ -121,7 +121,7 @@ services:
       dockerfile: infra/Dockerfile.web
     container_name: enigma-sac-web
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+      API_BACKEND_URL: http://api:8000
       NODE_ENV: ${APP_ENV:-development}
     ports:
       - "3000:3000"
