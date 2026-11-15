@@ -1,1 +1,1 @@
-"""RAG package for NASA PDF documents processing and retrieval."""
+"""FAISS RAG for NASA PDF documents and local PSI investigation metadata."""

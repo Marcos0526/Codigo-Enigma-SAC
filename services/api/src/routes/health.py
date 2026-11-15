@@ -20,6 +20,32 @@ async def health_check(
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """Comprehensive health check for all services."""
+    if settings.DATA_SOURCE == "local":
+        try:
+            from services.api.src.routes.local_data import get_catalog
+
+            catalog = get_catalog()
+            services = {
+                "local_data": {
+                    "status": "healthy",
+                    "path": settings.PSI_DATA_DIR,
+                    "investigations": catalog.investigation_count,
+                    "files": len(catalog),
+                },
+                "rag": {
+                    "status": "lazy",
+                    "model": settings.NASA_RAG_EMBEDDING_MODEL,
+                    "retriever": "FAISS",
+                },
+            }
+            return {"status": "healthy", "version": settings.APP_VERSION, "services": services}
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "version": settings.APP_VERSION,
+                "services": {"local_data": {"status": "unhealthy", "details": {"error": str(e)}}},
+            }
+
     services = {}
     overall_status = "healthy"
 
@@ -70,6 +96,13 @@ async def readiness_check(
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """Kubernetes readiness probe - checks if service can handle requests."""
+    if settings.DATA_SOURCE == "local":
+        from pathlib import Path
+
+        return {
+            "status": "ready" if Path(settings.PSI_DATA_DIR).is_dir() else "not ready",
+            "source": settings.PSI_DATA_DIR,
+        }
     try:
         await db.execute(text("SELECT 1"))
         return {"status": "ready"}

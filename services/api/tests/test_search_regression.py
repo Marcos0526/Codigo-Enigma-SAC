@@ -2,7 +2,7 @@
 
 import os
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from services.api.main import app
 from services.api.src.main import app as canonical_app
 from services.api.src.database import get_db_session
-from services.api.src.routes import search
+from services.api.src.routes import local_data, search
 
 
 def test_legacy_entry_point_uses_current_routes():
@@ -21,23 +21,118 @@ def test_legacy_entry_point_uses_current_routes():
 
 
 def test_search_http_response():
-    async def database_session():
-        yield None
+    rag = Mock()
+    rag.search.return_value = ([], [])
+    with patch.object(local_data, 'get_rag', return_value=rag):
+        client = TestClient(app)
+        response = client.post('/api/v1/search', json={'query': 'temperature'})
+        assert response.status_code == 200
+        assert response.json()['status'] == 'no_matches'
+        assert response.json()['datasets'] == []
+        assert response.json()['searchMetadata']['source'] == 'data/psi_databases'
+        invalid = client.post('/api/v1/search', json={'query': ''})
+        assert invalid.status_code == 422
 
-    app.dependency_overrides[get_db_session] = database_session
-    try:
-        with patch.object(search, 'generate_embedding', AsyncMock(return_value=[1.0, 0.0, 0.0])), patch.object(
-            search, 'vector_search', AsyncMock(return_value=[])
-        ):
-            client = TestClient(app)
-            response = client.post('/api/v1/search', json={'query': 'temperature'})
-            assert response.status_code == 200
-            assert response.json()['status'] == 'no_matches'
-            assert response.json()['datasets'] == []
-            invalid = client.post('/api/v1/search', json={'query': ''})
-            assert invalid.status_code == 422
-    finally:
-        app.dependency_overrides.pop(get_db_session, None)
+
+def test_chat_uses_local_rag_without_llm_key():
+    rag = Mock()
+    rag.retrieve.return_value = [{
+        'content': 'PSI-20 BRE temperature metadata',
+        'metadata': {'source': 'PSI-20/19056A2_data.csv'},
+        'score': 0.8,
+    }]
+    with patch.object(local_data, 'get_rag', return_value=rag), patch.object(
+        local_data.settings, 'LLM_API_KEY', ''
+    ):
+        response = TestClient(app).post('/api/v1/chat/completions', json={
+            'messages': [{'role': 'user', 'content': 'What temperature data is available?'}]
+        })
+    assert response.status_code == 200
+    content = response.json()['choices'][0]['message']['content']
+    assert 'local NASA PSI RAG' in content
+    assert 'PSI-20/19056A2_data.csv' in content
+    rag.retrieve.assert_called_once()
+
+
+def test_chat_with_llm_grounds_the_prompt_and_appends_sources():
+    from services.api.src.routes.chat import (
+        ChatChoice,
+        ChatCompletionResponse,
+        ChatMessage,
+    )
+
+    rag = Mock()
+    rag.retrieve.return_value = [{
+        'content': 'PSI-20 BRE temperature metadata',
+        'metadata': {'source': 'PSI-20/19056A2_data.csv'},
+        'score': 0.8,
+    }]
+    expected = ChatCompletionResponse(
+        id='llm-1',
+        created=1,
+        model='test-model',
+        choices=[
+            ChatChoice(
+                index=0,
+                message=ChatMessage(role='assistant', content='Grounded answer [1]'),
+                finish_reason='stop',
+            )
+        ],
+        usage={'prompt_tokens': 1, 'completion_tokens': 1, 'total_tokens': 2},
+    )
+    captured = {}
+
+    async def fake_completion(request):
+        captured['request'] = request
+        return expected
+
+    with patch.object(local_data, 'get_rag', return_value=rag), patch.object(
+        local_data.settings, 'LLM_API_KEY', 'test-key'
+    ), patch.object(
+        local_data, 'legacy_chat_completions', side_effect=fake_completion
+    ):
+        response = TestClient(app).post('/api/v1/chat/completions', json={
+            'messages': [
+                {'role': 'system', 'content': 'Selected dataset: 19056A2 data'},
+                {'role': 'user', 'content': 'What temperature data is available?'},
+            ]
+        })
+
+    assert response.status_code == 200
+    content = response.json()['choices'][0]['message']['content']
+    assert content.startswith('Grounded answer [1]')
+    assert 'Local NASA PSI sources:' in content
+    assert 'PSI-20/19056A2_data.csv' in content
+
+    messages = captured['request'].messages
+    assert messages[0].role == 'system'
+    assert 'RETRIEVED LOCAL NASA PSI CONTEXT' in messages[0].content
+    assert 'PSI-20/19056A2_data.csv' in messages[0].content
+    assert 'cosine 0.800' in messages[0].content
+    assert 'Selected dataset: 19056A2 data' in messages[0].content
+    assert [message.role for message in messages[1:]] == ['user']
+
+
+def test_chat_falls_back_to_retrieval_when_llm_fails():
+    rag = Mock()
+    rag.retrieve.return_value = [{
+        'content': 'PSI-21 soot metadata',
+        'metadata': {'source': 'PSI-21/17319A3_data.csv'},
+        'score': 0.7,
+    }]
+    with patch.object(local_data, 'get_rag', return_value=rag), patch.object(
+        local_data.settings, 'LLM_API_KEY', 'test-key'
+    ), patch.object(
+        local_data, 'legacy_chat_completions', AsyncMock(side_effect=RuntimeError('boom'))
+    ):
+        response = TestClient(app).post('/api/v1/chat/completions', json={
+            'messages': [{'role': 'user', 'content': 'What soot data is available?'}]
+        })
+
+    assert response.status_code == 200
+    content = response.json()['choices'][0]['message']['content']
+    assert 'LLM could not be reached' in content
+    assert 'PSI-21/17319A3_data.csv' in content
 
 
 @pytest.mark.parametrize('origin', ['http://localhost:3000', 'http://127.0.0.1:3000'])

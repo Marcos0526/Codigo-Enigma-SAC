@@ -2,7 +2,6 @@
 
 import { FormEvent, useMemo, useState, useEffect, useRef } from "react";
 import embed, { VisualizationSpec } from "vega-embed";
-import SyntheticChartExplorer from "./synthetic-chart-explorer";
 
 type SearchResult = {
   id: string;
@@ -360,15 +359,13 @@ export default function HomePage() {
         </section>
       )}
 
-      {selected && <SyntheticChartExplorer key={selected.id} datasetId={selected.id} />}
-
       <section className="section chat-section">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">GROQ CHAT ASSISTANT</p>
+            <p className="eyebrow">NASA PSI RAG ASSISTANT</p>
             <h2>Ask about combustion science or the selected dataset</h2>
           </div>
-          <span className="tag">Powered by Groq</span>
+          <span className="tag">Local data + FAISS RAG</span>
         </div>
         
         <div className="chat-container">
@@ -384,7 +381,7 @@ export default function HomePage() {
             {chatMessages.map((msg, idx) => (
               <div key={`${msg.role}-${idx}`} className={`chat-message ${msg.role}`}>
                 <span className="chat-role">
-                  {msg.role === "user" ? "You" : "Groq Assistant"}
+                  {msg.role === "user" ? "You" : "RAG Assistant"}
                 </span>
                 <div className="chat-bubble">
                   <p>{msg.content}</p>
@@ -394,7 +391,7 @@ export default function HomePage() {
             {chatLoading && (
               <div className="chat-message assistant">
                 <span className="chat-role">
-                  Groq Assistant
+                  RAG Assistant
                 </span>
                 <div className="chat-bubble">
                   <p>Thinking...</p>

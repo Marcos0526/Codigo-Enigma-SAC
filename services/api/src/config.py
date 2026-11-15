@@ -1,9 +1,13 @@
 """API service configuration."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
@@ -13,6 +17,15 @@ class Settings(BaseSettings):
     APP_HOST: str = "0.0.0.0"
     APP_PORT: int = 8000
     LOG_LEVEL: str = "info"
+
+    # Local NASA PSI data and RAG. Set DATA_SOURCE=database for the legacy catalog.
+    DATA_SOURCE: str = "local"
+    PSI_DATA_DIR: str = str(PROJECT_ROOT / "data" / "psi_databases")
+    NASA_RAG_CACHE: str = str(
+        PROJECT_ROOT / "services" / "search" / "src" / "rag" / ".cache" / "psi_data"
+    )
+    NASA_RAG_EMBEDDING_MODEL: str = "sentence-transformers/all-mpnet-base-v2"
+    NASA_RAG_TOP_K: int = 5
 
     # Database
     DATABASE_URL: str = "postgresql://enigma:enigma@localhost:5432/enigma_sac"

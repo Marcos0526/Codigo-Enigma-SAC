@@ -352,9 +352,106 @@ Phases 2 and 3 can be developed **in parallel** once the Phase 1 contract is sta
 
 ---
 
-## 12. Quick Start: Synthetic Data Pipeline with NVIDIA Embeddings
+## 12. Quick Start: Local NASA PSI Data + RAG
 
-This section provides step-by-step instructions to run the complete synthetic data pipeline with NVIDIA Nemotron embeddings.
+The general Next.js page now reads `data/psi_databases` directly. It does not require PostgreSQL and does not use `data/synthetic`. CSV, XLSX, and XLS files are exposed through the same search, schema, summary, preview, and chart endpoints.
+
+Start the API in an isolated container without starting the database services:
+
+```bash
+docker compose -f infra/docker-compose.yml up --build --no-deps api
+```
+
+In another terminal, start the repository's general web page:
+
+```bash
+npm ci
+npm run dev:web
+```
+
+Open `http://localhost:3000`. The first search or chat request builds the FAISS index with `sentence-transformers/all-mpnet-base-v2`; downloading the embedding model can take several minutes. The index is retained in the `rag_cache` Docker volume and rebuilt when local PSI files change.
+
+### RAG chat with an optional LLM
+
+The chat endpoint always retrieves from the local FAISS index first. Then:
+
+1. It builds a system prompt containing the top `NASA_RAG_TOP_K` PSI metadata/file chunks, their cosine scores, and the investigation/dataset IDs.
+2. It asks the LLM to use **only** that context, cite every factual sentence as `[1]`, `[2]`, etc., and never invent measurements or file contents.
+3. It appends an explicit `Local NASA PSI sources:` list to the answer.
+
+Without `LLM_API_KEY`, the endpoint returns the cited retrieval itself instead of inventing a response. If the LLM provider fails, the endpoint also falls back to the cited retrieval instead of failing the chat.
+
+Configure any OpenAI-compatible provider in `.env`:
+
+| Variable | Purpose | Example |
+| --- | --- | --- |
+| `LLM_API_KEY` | Provider key; empty means retrieval-only | `gsk_...` |
+| `LLM_API_URL` | OpenAI-compatible base URL | `https://api.groq.com/openai/v1` |
+| `LLM_MODEL` | Chat model used when the request omits `model` | `llama-3.3-70b-versatile` |
+| `LLM_MAX_TOKENS` | Maximum answer length | `1000` |
+| `LLM_TEMPERATURE` | Lower is more factual | `0.1` |
+| `NASA_RAG_TOP_K` | Retrieved chunks sent to the LLM | `5` |
+
+Provider examples:
+
+```bash
+# OpenAI
+LLM_API_KEY=sk-...
+LLM_API_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o-mini
+
+# Groq
+LLM_API_KEY=gsk_...
+LLM_API_URL=https://api.groq.com/openai/v1
+LLM_MODEL=llama-3.3-70b-versatile
+
+# NVIDIA
+LLM_API_KEY=nvapi-...
+LLM_API_URL=https://integrate.api.nvidia.com/v1
+LLM_MODEL=meta/llama-3.1-70b-instruct
+
+# Local Ollama (OpenAI-compatible endpoint)
+LLM_API_KEY=ollama
+LLM_API_URL=http://localhost:11434/v1
+LLM_MODEL=llama3.1
+```
+
+After editing `.env`, recreate the API so Compose passes the new values:
+
+```bash
+docker compose --env-file .env -f infra/docker-compose.yml up -d --no-deps --force-recreate api
+```
+
+Never commit a real `.env` or API key. `.env.example` must contain placeholders only.
+
+Test the grounded chat directly:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "messages": [
+      {"role": "user", "content": "Which local datasets measure flame temperature in microgravity?"}
+    ]
+  }'
+```
+
+With an LLM configured, the response uses `settings.LLM_MODEL` unless the request includes a `model` field. `GET /api/v1/chat/models` lists provider models when a key is configured.
+
+Useful read-only checks:
+
+```bash
+curl http://localhost:8000/api/v1/health
+curl -X POST http://localhost:3000/api/v1/search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"combustion temperature in microgravity","options":{"maxResults":100}}'
+```
+
+Set `DATA_SOURCE=database` only to use the legacy database catalog.
+
+## 13. Legacy Reference: Synthetic Data Pipeline with NVIDIA Embeddings
+
+The following legacy instructions apply only to `DATA_SOURCE=database` and the optional synthetic-data pipeline. They are not used by the local NASA PSI page described above.
 
 ### Prerequisites
 

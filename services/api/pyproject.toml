@@ -7,8 +7,8 @@ requires-python = ">=3.9"
 dependencies = [
     "fastapi==0.109.0",
     "uvicorn[standard]==0.27.0",
-    "pydantic==2.5.3",
-    "pydantic-settings==2.1.0",
+    "pydantic==2.7.4",
+    "pydantic-settings==2.4.0",
     "asyncpg==0.29.0",
     "sqlalchemy[asyncio]==2.0.25",
     "pgvector==0.2.5",
@@ -23,6 +23,17 @@ dependencies = [
     "python-json-logger==2.0.7",
     "prometheus-client==0.19.0",
     "pyyaml==6.0.1",
+    "openpyxl==3.1.5",
+    "xlrd==2.0.1",
+    "sentence-transformers>=3.0,<5",
+    "faiss-cpu>=1.8,<2",
+    "langchain-community==0.3.0",
+    "langchain-huggingface==0.1.0",
+    "langchain-text-splitters==0.3.0",
+    "pypdf>=4,<7",
+    "pdfplumber>=0.11,<1",
+    "pdf2image>=1.16,<2",
+    "pytesseract>=0.3.10,<1",
 ]
 
 [project.optional-dependencies]

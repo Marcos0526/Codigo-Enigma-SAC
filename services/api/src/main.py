@@ -43,11 +43,17 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler."""
-    logger.info("application_starting", version=settings.APP_VERSION)
-    await init_db()
+    logger.info(
+        "application_starting",
+        version=settings.APP_VERSION,
+        data_source=settings.DATA_SOURCE,
+    )
+    if settings.DATA_SOURCE != "local":
+        await init_db()
     yield
     logger.info("application_shutting_down")
-    await close_db()
+    if settings.DATA_SOURCE != "local":
+        await close_db()
 
 
 app = FastAPI(
@@ -95,13 +101,18 @@ async def global_exception_handler(request: Request, exc: Exception):
         },
     )
 
-# Routes
+# Routes. Local mode never reads or generates synthetic datasets.
 app.include_router(health.router, prefix="/api/v1", tags=["Health"])
-app.include_router(search.router, prefix="/api/v1", tags=["Search"])
-app.include_router(datasets.router, prefix="/api/v1", tags=["Datasets"])
-app.include_router(summarization.router, prefix="/api/v1", tags=["Summarization"])
-app.include_router(visualization.router, prefix="/api/v1", tags=["Visualization"])
-app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
+if settings.DATA_SOURCE == "local":
+    from services.api.src.routes import local_data
+
+    app.include_router(local_data.router, prefix="/api/v1", tags=["Local NASA PSI + RAG"])
+else:
+    app.include_router(search.router, prefix="/api/v1", tags=["Search"])
+    app.include_router(datasets.router, prefix="/api/v1", tags=["Datasets"])
+    app.include_router(summarization.router, prefix="/api/v1", tags=["Summarization"])
+    app.include_router(visualization.router, prefix="/api/v1", tags=["Visualization"])
+    app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
 
 # Root endpoint
 @app.get("/")

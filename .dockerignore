@@ -1,0 +1,13 @@
+.git
+.gitignore
+**/__pycache__
+**/*.pyc
+**/node_modules
+**/.next
+**/.cache
+**/.venv
+.env
+.env.*
+data
+coverage
+*.log

@@ -79,6 +79,13 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       APP_PORT: 8000
+      DATA_SOURCE: ${DATA_SOURCE:-local}
+      PSI_DATA_DIR: /app/data/psi_databases
+      NASA_RAG_CACHE: /app/services/search/src/rag/.cache/psi_data
+      NASA_RAG_EMBEDDING_MODEL: ${NASA_RAG_EMBEDDING_MODEL:-sentence-transformers/all-mpnet-base-v2}
+      NASA_RAG_TOP_K: ${NASA_RAG_TOP_K:-5}
+      HF_HOME: /app/services/search/src/rag/.cache/huggingface
+      TOKENIZERS_PARALLELISM: "false"
       DATABASE_URL: postgresql://${POSTGRES_USER:-enigma}:${POSTGRES_PASSWORD:-enigma}@postgres:5432/enigma_sac
       REDIS_URL: redis://redis:6379
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-local}
@@ -89,6 +96,7 @@ services:
       NVIDIA_API_BASE_URL: ${NVIDIA_API_BASE_URL:-https://integrate.api.nvidia.com/v1}
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
       LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_API_URL: ${LLM_API_URL:-}
       LLM_MODEL: ${LLM_MODEL:-gpt-4-turbo-preview}
       ALLOWED_DATA_DOMAINS: ${ALLOWED_DATA_DOMAINS:-psi.nasa.gov,raw.githubusercontent.com,data.nasa.gov}
       MAX_DOWNLOAD_SIZE: ${MAX_DOWNLOAD_SIZE:-104857600}
@@ -98,6 +106,9 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
       - "8000:8000"
+    volumes:
+      - ../data/psi_databases:/app/data/psi_databases:ro
+      - rag_cache:/app/services/search/src/rag/.cache
     depends_on:
       postgres:
         condition: service_healthy
@@ -137,3 +148,4 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  rag_cache:

@@ -283,6 +283,7 @@ def map_column_type(col_type: str) -> str:
         "categorical": "nominal",
         "text": "nominal",
         "boolean": "nominal",
+        "mixed": "nominal",
         "unknown": "quantitative",
     }
     return mapping.get(col_type, "quantitative")
