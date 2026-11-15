@@ -1,7 +1,10 @@
 # Render deployment configuration for Enigma SAC
 # Semantic Data Discovery & Interactive Dashboards
 #
-# For detailed setup instructions, see README.md
+# For detailed setup instructions:
+# 1. Create required secrets in Render Dashboard (LLM_API_KEY)
+# 2. Render will auto-populate DATABASE_URL and REDIS_URL
+# 3. Use the preDeployCommand to initialize the database with extensions
 #
 # Required environment variables to set in Render dashboard AFTER deployment:
 #   - LLM_API_KEY: Your OpenAI API key (or other LLM provider key)
@@ -20,47 +23,87 @@ services:
   # ===========================================================================
   - type: web
     name: enigma-sac-api
-    env: python
+    runtime: python
     buildCommand: |
       pip install --no-cache-dir -r services/api/requirements.txt
       pip install --no-cache-dir -e packages/contracts
     startCommand: python -m uvicorn services.api.main:app --host 0.0.0.0 --port 8000
-    plan: starter
+    plan: 1c-2g
     port: 8000
     envVars:
-      APP_ENV: production
-      APP_PORT: 8000
-      LOG_LEVEL: info
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
-      EMBEDDING_PROVIDER: local
-      EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
-      EMBEDDING_VERSION: 1.0.0
-      EMBEDDING_DIMENSIONS: 384
-      EMBEDDING_BATCH_SIZE: 32
-      EMBEDDING_MAX_LENGTH: 512
-      NVIDIA_API_BASE_URL: https://integrate.api.nvidia.com/v1
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
-      LLM_API_KEY: ${LLM_API_KEY}
-      LLM_MODEL: ${LLM_MODEL:-gpt-4-turbo-preview}
-      LLM_MAX_TOKENS: 2000
-      LLM_TEMPERATURE: 0.1
-      ALLOWED_DATA_DOMAINS: psi.nasa.gov,raw.githubusercontent.com,data.nasa.gov
-      MAX_DOWNLOAD_SIZE: 104857600
-      DOWNLOAD_TIMEOUT: 30
-      SEARCH_MIN_SCORE: 0.3
-      SEARCH_MAX_RESULTS: 100
-      SEARCH_RERANK_ENABLED: false
-      SEARCH_RERANK_MODEL: cross-encoder/ms-marco-MiniLM-L-6-v2
-      MAX_PROFILE_ROWS: 100000
-      MAX_PROFILE_MEMORY_MB: 512
-      MAX_PROFILE_TIME_SECONDS: 60
-      MAX_CHART_ROWS: 10000
-      MAX_CHART_MEMORY_MB: 256
-      MAX_CHART_TIME_SECONDS: 30
-      SSRF_PROTECTION_ENABLED: true
-      RATE_LIMIT_RPM: 60
-      CORS_ORIGINS: ${RENDER_EXTERNAL_URL},http://localhost:3000,http://127.0.0.1:3000
+      - key: APP_ENV
+        value: production
+      - key: APP_PORT
+        value: "8000"
+      - key: LOG_LEVEL
+        value: info
+      - key: DATABASE_URL
+        fromDatabase:
+          name: enigma-sac-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: enigma-sac-redis
+          property: connectionString
+      - key: EMBEDDING_PROVIDER
+        value: local
+      - key: EMBEDDING_MODEL
+        value: sentence-transformers/all-MiniLM-L6-v2
+      - key: EMBEDDING_VERSION
+        value: 1.0.0
+      - key: EMBEDDING_DIMENSIONS
+        value: "384"
+      - key: EMBEDDING_BATCH_SIZE
+        value: "32"
+      - key: EMBEDDING_MAX_LENGTH
+        value: "512"
+      - key: NVIDIA_API_BASE_URL
+        value: https://integrate.api.nvidia.com/v1
+      - key: LLM_PROVIDER
+        value: ${LLM_PROVIDER:-openai}
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: ${LLM_MODEL:-gpt-4-turbo-preview}
+      - key: LLM_MAX_TOKENS
+        value: "2000"
+      - key: LLM_TEMPERATURE
+        value: "0.1"
+      - key: ALLOWED_DATA_DOMAINS
+        value: psi.nasa.gov,raw.githubusercontent.com,data.nasa.gov
+      - key: MAX_DOWNLOAD_SIZE
+        value: "104857600"
+      - key: DOWNLOAD_TIMEOUT
+        value: "30"
+      - key: SEARCH_MIN_SCORE
+        value: "0.3"
+      - key: SEARCH_MAX_RESULTS
+        value: "100"
+      - key: SEARCH_RERANK_ENABLED
+        value: "false"
+      - key: SEARCH_RERANK_MODEL
+        value: cross-encoder/ms-marco-MiniLM-L-6-v2
+      - key: MAX_PROFILE_ROWS
+        value: "100000"
+      - key: MAX_PROFILE_MEMORY_MB
+        value: "512"
+      - key: MAX_PROFILE_TIME_SECONDS
+        value: "60"
+      - key: MAX_CHART_ROWS
+        value: "10000"
+      - key: MAX_CHART_MEMORY_MB
+        value: "256"
+      - key: MAX_CHART_TIME_SECONDS
+        value: "30"
+      - key: SSRF_PROTECTION_ENABLED
+        value: "true"
+      - key: RATE_LIMIT_RPM
+        value: "60"
+      - key: CORS_ORIGINS
+        value: ${RENDER_EXTERNAL_URL},http://localhost:3000,http://127.0.0.1:3000
+    healthCheckPath: /health
+    preDeployCommand: bash infra/init-db/init_render.sh
 
   # ===========================================================================
   # Web Frontend (Next.js)
@@ -69,40 +112,27 @@ services:
   # ===========================================================================
   - type: web
     name: enigma-sac-web
-    env: node
+    runtime: node
     buildCommand: npm run build --workspace=apps/web
     startCommand: npm run start --workspace=apps/web
     plan: starter
     port: 3000
     envVars:
-      NODE_ENV: production
-      PORT: 3000
-      API_BACKEND_URL: http://enigma-sac-api:8000
-      SYNTHETIC_DATA_DIR: /opt/render/project/data/synthetic
-      WEB_URL: ${RENDER_EXTERNAL_URL}
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: API_BACKEND_URL
+        value: http://enigma-sac-api:8000
+      - key: SYNTHETIC_DATA_DIR
+        value: /opt/render/project/data/synthetic
+      - key: WEB_URL
+        value: ${RENDER_EXTERNAL_URL}
     buildFilter:
-      dirs:
-        - apps/web
-        - packages/contracts
-        - data/synthetic
-
-  # ===========================================================================
-  # PostgreSQL Database (Render Managed)
-  # With pgvector extension for vector similarity search
-  # Standard-2X plan recommended for production
-  # ===========================================================================
-  - type: postgres
-    name: enigma-sac-db
-    plan: standard-2x
-    postgresVersion: "16"
-
-  # ===========================================================================
-  # Redis Cache (Render Managed)
-  # For session storage and rate limiting
-  # ===========================================================================
-  - type: redis
-    name: enigma-sac-redis
-    plan: standard-1x
+      paths:
+        - apps/web/**
+        - packages/contracts/**
+        - data/synthetic/**
 
   # ===========================================================================
   # Cron Job: Periodic Catalog Ingestion
@@ -110,16 +140,53 @@ services:
   # ===========================================================================
   - type: cron
     name: enigma-sac-catalog-ingest
-    env: python
+    runtime: python
     buildCommand: |
       pip install --no-cache-dir -r services/api/requirements.txt
       pip install --no-cache-dir -e packages/contracts
     schedule: "0 * * * *"
     timeout: 600
     envVars:
-      APP_ENV: production
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
-      LLM_API_KEY: ${LLM_API_KEY}
-      LLM_MODEL: ${LLM_MODEL}
-      ALLOWED_DATA_DOMAINS: psi.nasa.gov,raw.githubusercontent.com,data.nasa.gov
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: enigma-sac-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: enigma-sac-redis
+          property: connectionString
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: ${LLM_MODEL}
+      - key: ALLOWED_DATA_DOMAINS
+        value: psi.nasa.gov,raw.githubusercontent.com,data.nasa.gov
+
+  # ===========================================================================
+  # Redis Cache (Render Key Value)
+  # For session storage and rate limiting
+  # ===========================================================================
+  - type: keyvalue
+    name: enigma-sac-redis
+    plan: 256mb
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+
+databases:
+  # ===========================================================================
+  # PostgreSQL Database (Render Managed)
+  # With pgvector extension for vector similarity search
+  # Note: Render Postgres supports pgvector extension
+  # ===========================================================================
+  - name: enigma-sac-db
+    postgresMajorVersion: "16"
+    plan: 1c-2g
+    databaseName: enigma_sac
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+    connectionPool: pgbouncer
