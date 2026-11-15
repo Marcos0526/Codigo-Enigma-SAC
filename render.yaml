@@ -139,12 +139,10 @@ services:
   # ===========================================================================
   - type: cron
     name: enigma-sac-catalog-ingest
-    runtime: python
     buildCommand: |
       pip install --no-cache-dir -r services/api/requirements.txt
       pip install --no-cache-dir -e packages/contracts
     schedule: "0 * * * *"
-    timeout: 600
     envVars:
       - key: APP_ENV
         value: production

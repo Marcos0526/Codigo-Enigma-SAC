@@ -50,6 +50,13 @@ Create the following services manually:
 - Start Command: `npm run start --workspace=apps/web`
 - Port: 3000
 
+#### 5. Cron Job: Catalog Ingestion
+- Type: Cron Job
+- Name: `enigma-sac-catalog-ingest`
+- Runtime: Python
+- Schedule: `0 * * * *` (hourly)
+- Timeout: 600 seconds (10 minutes)
+
 ## Required Environment Variables
 
 ### API Service (`enigma-sac-api`)
@@ -72,6 +79,16 @@ Create the following services manually:
 | `NODE_ENV` | `production` | - |
 | `PORT` | `3000` | - |
 | `API_BACKEND_URL` | `http://enigma-sac-api:8000` | - |
+
+### Catalog Ingestion Cron Job
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `APP_ENV` | `production` | - |
+| `DATABASE_URL` | Auto-populated | From `enigma-sac-db` |
+| `REDIS_URL` | Auto-populated | From `enigma-sac-redis` |
+| `LLM_API_KEY` | Your API key | **Required** |
+| `LLM_MODEL` | Your model | - |
 
 ## Database Setup
 
