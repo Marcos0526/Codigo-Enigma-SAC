@@ -7,6 +7,7 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 from services.api.src.config import settings
+from services.api.src.routes.llm_client import post_chat_completion
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -67,7 +68,6 @@ async def chat_completions(
             },
         )
 
-    base_url = settings.LLM_API_URL or "https://api.openai.com/v1"
     model = request.model or settings.LLM_MODEL
     max_tokens = min(
         request.max_tokens or settings.LLM_MAX_TOKENS,
@@ -75,22 +75,15 @@ async def chat_completions(
     )
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                f"{base_url.rstrip('/')}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {settings.LLM_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "messages": [msg.model_dump() for msg in request.messages],
-                    "max_tokens": max_tokens,
-                    "temperature": request.temperature,
-                    "stream": request.stream,
-                },
-            )
-        response.raise_for_status()
+        response = await post_chat_completion(
+            {
+                "model": model,
+                "messages": [msg.model_dump() for msg in request.messages],
+                "max_tokens": max_tokens,
+                "temperature": request.temperature,
+                "stream": request.stream,
+            }
+        )
         data = response.json()
 
         return ChatCompletionResponse(**data)

@@ -9,6 +9,7 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 from services.api.src.config import settings
+from services.api.src.routes.llm_client import post_chat_completion
 from services.api.src.database import get_db_context
 
 router = APIRouter()
@@ -241,31 +242,21 @@ Generate a summary with:
 9. Warnings
 10. Sources"""
 
-    # Use custom API URL if provided (for Groq, Together, etc.), otherwise default to OpenAI
-    # Ensure the URL ends with /chat/completions
-    base_url = settings.LLM_API_URL or "https://api.openai.com/v1"
-    api_url = base_url.rstrip("/") + "/chat/completions"
-
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        response = await client.post(
-            api_url,
-            headers={
-                "Authorization": f"Bearer {settings.LLM_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": settings.LLM_MODEL,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                "max_tokens": settings.LLM_MAX_TOKENS,
-                "temperature": settings.LLM_TEMPERATURE,
-            },
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
+    # Use custom API URL if provided (for Groq, Together, etc.), otherwise default to OpenAI.
+    # The shared client retries provider 429 responses using the provider retry time.
+    response = await post_chat_completion(
+        {
+            "model": settings.LLM_MODEL,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "max_tokens": settings.LLM_MAX_TOKENS,
+            "temperature": settings.LLM_TEMPERATURE,
+        }
+    )
+    data = response.json()
+    return data["choices"][0]["message"]["content"]
 
 
 async def generate_anthropic_summary(facts: dict, options: dict) -> str:

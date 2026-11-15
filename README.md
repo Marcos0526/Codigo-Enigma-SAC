@@ -395,6 +395,7 @@ Deployment notes specific to this subscription:
 - ACR Tasks are not enabled on the current Azure for Students subscription. Images are therefore built locally with Docker and pushed to ACR.
 - The API image installs CPU-only PyTorch, reducing the image from approximately 6.7 GiB to approximately 2.1 GiB.
 - `LLM_MAX_TOKENS` is set to `800` because the configured Groq model enforces an output-token-per-minute limit of 1000.
+- The API retries Groq `429` responses using the provider's `retryAtMs` or `Retry-After` value, waiting up to 45 seconds per attempt. This prevents an immediate fallback when a summary is followed by a chat question in the same minute.
 - The FAISS index was prebuilt once inside the running API container and persisted in the `rag-cache` Azure Files share.
 
 
