@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState, useEffect, useRef } from "react";
+import embed from "vega-embed";
 
 type SearchResult = {
   id: string;
@@ -65,6 +66,15 @@ export default function HomePage() {
   const [yAxis, setYAxis] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chart && chartContainerRef.current) {
+      const spec = chart.spec as object;
+      embed(chartContainerRef.current, spec, { actions: false, mode: "vega-lite" }).catch(console.error);
+    }
+  }, [chart]);
 
   const columns = useMemo(
     () => (schema?.columns ?? []).map((column) => column.column_name ?? column.name ?? ""),
@@ -251,7 +261,11 @@ export default function HomePage() {
               <label>X-axis<select value={xAxis} onChange={(event) => setXAxis(event.target.value)}>{columns.map((column) => <option key={column}>{column}</option>)}</select></label>
               {chartType !== "histogram" && <label>Y-axis<select value={yAxis} onChange={(event) => setYAxis(event.target.value)}>{columns.map((column) => <option key={column}>{column}</option>)}</select></label>}
               <button type="button" onClick={generateChart} disabled={loading || !xAxis}>Preview chart</button>
-              {chart && <pre className="chart-output">{JSON.stringify(chart, null, 2)}</pre>}
+              {chart && (
+              <div className="chart-container">
+                <div ref={chartContainerRef} className="chart-renderer" />
+              </div>
+            )}
             </div>
           </div>
           {summary && (
