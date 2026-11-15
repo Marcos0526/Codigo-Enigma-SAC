@@ -149,7 +149,7 @@ def run(ctx):
 
 @cli.command()
 @click.pass_context
-def init_db(ctx):
+def init_db_cmd(ctx):
     """Initialize database schema."""
     from services.api.src.database import init_db
     asyncio.run(init_db())

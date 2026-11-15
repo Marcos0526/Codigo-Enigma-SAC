@@ -1,7 +1,6 @@
 """Summarization routes - Evidence-based dataset summaries."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 import httpx
 import structlog
@@ -10,7 +9,7 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 from services.api.src.config import settings
-from services.api.src.database import get_db_session
+from services.api.src.database import get_db_context
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -51,7 +50,6 @@ class SummaryResponse(BaseModel):
 async def generate_summary(
     dataset_id: str,
     request: SummaryRequest,
-    db: AsyncSession = Depends(get_db_session),
 ) -> SummaryResponse:
     """
     Generate an evidence-based summary of the dataset using only verifiable metadata
@@ -61,48 +59,47 @@ async def generate_summary(
 
     logger.info("summary_generation_started", dataset_id=dataset_id)
 
-    # Verify dataset exists and get metadata
-    dataset_query = """
-        SELECT d.*, pi.title AS investigation_title
-        FROM datasets d
-        JOIN psi_investigations pi ON pi.psi_id = d.psi_id
-        WHERE d.dataset_id = $1
-    """
-    dataset_result = await db.execute(text(dataset_query), [dataset_id])
-    dataset = dataset_result.fetchone()
+    async with get_db_context() as conn:
+        # Verify dataset exists and get metadata
+        dataset_query = """
+            SELECT d.*, pi.title AS investigation_title
+            FROM datasets d
+            JOIN psi_investigations pi ON pi.psi_id = d.psi_id
+            WHERE d.dataset_id = $1
+        """
+        dataset = await conn.fetchrow(dataset_query, dataset_id)
 
-    if not dataset:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "error": {
-                    "code": "NOT_FOUND",
-                    "message": f"Dataset not found: {dataset_id}",
-                }
-            },
-        )
+        if not dataset:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "error": {
+                        "code": "NOT_FOUND",
+                        "message": f"Dataset not found: {dataset_id}",
+                    }
+                },
+            )
 
-    # Get schema and statistics
-    schema_query = """
-        SELECT column_name, column_type, unit, statistics
-        FROM dataset_schemas
-        WHERE dataset_id = (SELECT id FROM datasets WHERE dataset_id = $1)
-        ORDER BY ordinal_position
-    """
-    schema_result = await db.execute(text(schema_query), [dataset_id])
-    columns = [dict(row._mapping) for row in schema_result.fetchall()]
+        # Get schema and statistics
+        schema_query = """
+            SELECT column_name, column_type, unit, statistics
+            FROM dataset_schemas
+            WHERE dataset_id = (SELECT id FROM datasets WHERE dataset_id = $1)
+            ORDER BY ordinal_position
+        """
+        schema_rows = await conn.fetch(schema_query, dataset_id)
+        columns = [dict(row) for row in schema_rows]
 
-    # Get profile
-    profile_query = """
-        SELECT row_count, profiled_at, profile_version
-        FROM dataset_profiles
-        WHERE dataset_id = (SELECT id FROM datasets WHERE dataset_id = $1)
-    """
-    profile_result = await db.execute(text(profile_query), [dataset_id])
-    profile = profile_result.fetchone()
+        # Get profile
+        profile_query = """
+            SELECT row_count, profiled_at, profile_version
+            FROM dataset_profiles
+            WHERE dataset_id = (SELECT id FROM datasets WHERE dataset_id = $1)
+        """
+        profile = await conn.fetchrow(profile_query, dataset_id)
 
-    # Build verifiable facts for LLM
-    facts = build_verifiable_facts(dataset, columns, profile)
+        # Build verifiable facts for LLM
+        facts = build_verifiable_facts(dict(dataset), columns, dict(profile) if profile else None)
 
     # Generate summary using LLM
     try:
@@ -129,7 +126,7 @@ async def generate_summary(
         sources=structured_summary["sources"],
         generatedAt=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         catalogVersion=settings.CATALOG_VERSION,
-        profilingVersion=profile.profile_version if profile else None,
+        profilingVersion=profile.get("profile_version") if profile else None,
     )
 
     logger.info("summary_generation_completed", dataset_id=dataset_id, processing_time_ms=processing_time)
@@ -137,10 +134,24 @@ async def generate_summary(
     return response
 
 
+import json
+
 def build_verifiable_facts(dataset, columns, profile) -> dict:
     """Build structured verifiable facts from metadata and statistics."""
     numeric_columns = [c for c in columns if c["column_type"] == "numeric"]
     categorical_columns = [c for c in columns if c["column_type"] == "categorical"]
+
+    def parse_stats(stats_raw):
+        if not stats_raw:
+            return None
+        if isinstance(stats_raw, str):
+            try:
+                return json.loads(stats_raw)
+            except json.JSONDecodeError:
+                return None
+        elif isinstance(stats_raw, dict):
+            return stats_raw
+        return None
 
     facts = {
         "dataset_id": dataset["dataset_id"],
@@ -159,7 +170,7 @@ def build_verifiable_facts(dataset, columns, profile) -> dict:
             {
                 "name": c["column_name"],
                 "unit": c["unit"],
-                "statistics": c["statistics"],
+                "statistics": parse_stats(c["statistics"]),
             }
             for c in numeric_columns
         ],
@@ -167,10 +178,10 @@ def build_verifiable_facts(dataset, columns, profile) -> dict:
             {"name": c["column_name"]}
             for c in categorical_columns
         ],
-        "row_count": profile.row_count if profile else None,
-        "profiled_at": profile.profiled_at.isoformat() if profile and profile.profiled_at else None,
+        "row_count": profile.get("row_count") if profile else None,
+        "profiled_at": profile.get("profiled_at").isoformat() if profile and profile.get("profiled_at") else None,
         "verification_status": dataset["verification_status"],
-        "verified_at": dataset["verified_at"].isoformat() if dataset["verified_at"] else None,
+        "verified_at": dataset["verified_at"].isoformat() if dataset.get("verified_at") else None,
     }
 
     return facts
@@ -384,6 +395,8 @@ def parse_summary(summary_text: str, facts: dict) -> dict:
     }
 
 
+import json
+
 def generate_descriptive_summary(facts: dict) -> str:
     """Generate a descriptive summary without LLM (fallback)."""
     numeric_cols = facts.get("numeric_columns", [])
@@ -407,7 +420,17 @@ def generate_descriptive_summary(facts: dict) -> str:
     ]
 
     for col in numeric_cols:
-        stats = col.get("statistics")
+        stats_raw = col.get("statistics")
+        stats = {}
+        if stats_raw:
+            if isinstance(stats_raw, str):
+                try:
+                    stats = json.loads(stats_raw)
+                except json.JSONDecodeError:
+                    stats = {}
+            elif isinstance(stats_raw, dict):
+                stats = stats_raw
+        
         if stats:
             lines.append(
                 f"  - {col['name']}: range [{stats.get('min', 'N/A')}, {stats.get('max', 'N/A')}] "

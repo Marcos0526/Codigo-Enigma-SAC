@@ -1,7 +1,6 @@
 """Visualization routes - Chart generation and preview."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 import structlog
 import time
@@ -9,7 +8,7 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 from services.api.src.config import settings
-from services.api.src.database import get_db_session
+from services.api.src.database import get_db_context
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -38,7 +37,6 @@ class ChartPreviewResponse(BaseModel):
 @router.post("/charts/preview", response_model=ChartPreviewResponse)
 async def generate_chart_preview(
     request: ChartPreviewRequest,
-    db: AsyncSession = Depends(get_db_session),
 ) -> ChartPreviewResponse:
     """
     Generate an interactive chart specification and data for the selected dataset.
@@ -52,122 +50,123 @@ async def generate_chart_preview(
         chart_type=request.chartType,
     )
 
-    # Verify dataset exists
-    dataset_query = """
-        SELECT id FROM datasets WHERE dataset_id = $1
-    """
-    dataset_result = await db.execute(text(dataset_query), [request.datasetId])
-    dataset = dataset_result.fetchone()
+    # Use raw connection for pgvector compatibility (like search.py)
+    async with get_db_context() as conn:
+        # Verify dataset exists
+        dataset_query = """
+            SELECT id FROM datasets WHERE dataset_id = $1
+        """
+        dataset = await conn.fetchrow(dataset_query, request.datasetId)
 
-    if not dataset:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "error": {
-                    "code": "NOT_FOUND",
-                    "message": f"Dataset not found: {request.datasetId}",
-                }
-            },
-        )
+        if not dataset:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "error": {
+                        "code": "NOT_FOUND",
+                        "message": f"Dataset not found: {request.datasetId}",
+                    }
+                },
+            )
 
-    # Get column information
-    columns_query = """
-        SELECT column_name, column_type, description, unit, nullable
-        FROM dataset_schemas
-        WHERE dataset_id = (SELECT id FROM datasets WHERE dataset_id = $1)
-        ORDER BY ordinal_position
-    """
-    columns_result = await db.execute(text(columns_query), [request.datasetId])
-    columns = [dict(row._mapping) for row in columns_result.fetchall()]
+        # Get column information
+        columns_query = """
+            SELECT column_name, column_type, description, unit, nullable
+            FROM dataset_schemas
+            WHERE dataset_id = (SELECT id FROM datasets WHERE dataset_id = $1)
+            ORDER BY ordinal_position
+        """
+        columns_rows = await conn.fetch(columns_query, request.datasetId)
+        columns = [dict(row) for row in columns_rows]
 
-    column_map = {c["column_name"]: c for c in columns}
+        column_map = {c["column_name"]: c for c in columns}
 
-    # Validate columns exist
-    x_col = column_map.get(request.xAxis)
-    if not x_col:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": {
-                    "code": "VALIDATION_ERROR",
-                    "message": f"X-axis column not found: {request.xAxis}",
-                }
-            },
-        )
-
-    y_col = None
-    if request.yAxis:
-        y_col = column_map.get(request.yAxis)
-        if not y_col:
+        # Validate columns exist
+        x_col = column_map.get(request.xAxis)
+        if not x_col:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "error": {
                         "code": "VALIDATION_ERROR",
-                        "message": f"Y-axis column not found: {request.yAxis}",
+                        "message": f"X-axis column not found: {request.xAxis}",
                     }
                 },
             )
 
-    group_col = None
-    if request.groupBy:
-        group_col = column_map.get(request.groupBy)
-        if not group_col:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "error": {
-                        "code": "VALIDATION_ERROR",
-                        "message": f"Group-by column not found: {request.groupBy}",
-                    }
-                },
-            )
+        y_col = None
+        if request.yAxis:
+            y_col = column_map.get(request.yAxis)
+            if not y_col:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "error": {
+                            "code": "VALIDATION_ERROR",
+                            "message": f"Y-axis column not found: {request.yAxis}",
+                        }
+                    },
+                )
 
-    # Validate chart type compatibility
-    warnings = validate_chart_compatibility(request.chartType, x_col, y_col, group_col)
+        group_col = None
+        if request.groupBy:
+            group_col = column_map.get(request.groupBy)
+            if not group_col:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "error": {
+                            "code": "VALIDATION_ERROR",
+                            "message": f"Group-by column not found: {request.groupBy}",
+                        }
+                    },
+                )
 
-    # Get profile for metadata
-    profile_query = """
-        SELECT row_count FROM dataset_profiles
-        WHERE dataset_id = (SELECT id FROM datasets WHERE dataset_id = $1)
-    """
-    profile_result = await db.execute(text(profile_query), [request.datasetId])
-    profile = profile_result.fetchone()
-    row_count = profile.row_count if profile else 0
+        # Validate chart type compatibility
+        warnings = validate_chart_compatibility(request.chartType, x_col, y_col, group_col)
 
-    # Generate chart spec and sample data
-    spec = generate_chart_spec(request, x_col, y_col, group_col)
-    sample_data = generate_sample_data(request, x_col, y_col, group_col, columns)
+        # Get profile for metadata
+        profile_query = """
+            SELECT row_count FROM dataset_profiles
+            WHERE dataset_id = (SELECT id FROM datasets WHERE dataset_id = $1)
+        """
+        profile = await conn.fetchrow(profile_query, request.datasetId)
+        row_count = profile["row_count"] if profile else 0
 
-    processing_time = round((time.time() - start_time) * 1000, 2)
+        # Generate chart spec and sample data
+        options = request.options or {}
+        spec = generate_chart_spec(request.chartType, x_col, y_col, group_col, options)
+        sample_data = generate_sample_data(request.datasetId, x_col, y_col, group_col, columns, options)
 
-    response = ChartPreviewResponse(
-        datasetId=request.datasetId,
-        chartType=request.chartType,
-        spec=spec,
-        data=sample_data,
-        columns={
-            "x": x_col,
-            "y": y_col,
-            "groupBy": group_col,
-        },
-        warnings=warnings,
-        metadata={
-            "rowCount": row_count,
-            "filteredRowCount": len(sample_data),
-            "processingTimeMs": processing_time,
-            "memoryUsedBytes": len(str(sample_data).encode()),
-        },
-    )
+        processing_time = round((time.time() - start_time) * 1000, 2)
 
-    logger.info(
-        "chart_generation_completed",
-        dataset_id=request.datasetId,
-        chart_type=request.chartType,
-        processing_time_ms=processing_time,
-    )
+        response = ChartPreviewResponse(
+            datasetId=request.datasetId,
+            chartType=request.chartType,
+            spec=spec,
+            data=sample_data,
+            columns={
+                "x": x_col,
+                "y": y_col,
+                "groupBy": group_col,
+            },
+            warnings=warnings,
+            metadata={
+                "rowCount": row_count,
+                "filteredRowCount": len(sample_data),
+                "processingTimeMs": processing_time,
+                "memoryUsedBytes": len(str(sample_data).encode()),
+            },
+        )
 
-    return response
+        logger.info(
+            "chart_generation_completed",
+            dataset_id=request.datasetId,
+            chart_type=request.chartType,
+            processing_time_ms=processing_time,
+        )
+
+        return response
 
 
 def validate_chart_compatibility(
@@ -208,14 +207,13 @@ def validate_chart_compatibility(
 
 
 def generate_chart_spec(
-    request: dict,
+    chart_type: str,
     x_col: dict,
     y_col: Optional[dict],
     group_col: Optional[dict],
+    options: dict,
 ) -> Dict[str, Any]:
     """Generate Vega-Lite chart specification."""
-    options = request.get("options", {})
-    chart_type = request["chartType"]
 
     # Base encoding
     x_encoding = {
@@ -291,18 +289,18 @@ def map_column_type(col_type: str) -> str:
 
 
 def generate_sample_data(
-    request: dict,
+    dataset_id: str,
     x_col: dict,
     y_col: Optional[dict],
     group_col: Optional[dict],
     all_columns: List[dict],
+    options: dict,
 ) -> List[Dict[str, Any]]:
     """Generate sample data for chart preview.
     
     In production, this would query the actual data source.
     For now, return mock data based on column statistics.
     """
-    options = request.get("options", {})
     limit = options.get("limit", 50)
 
     # Get statistics for numeric columns to generate realistic samples

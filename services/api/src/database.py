@@ -50,11 +50,13 @@ async def get_db_context() -> AsyncGenerator[asyncpg.Connection, None]:
         await conn.close()
 
 
+from sqlalchemy import text
+
 async def init_db() -> None:
     """Initialize database connection and verify."""
     try:
         async with engine.begin() as conn:
-            await conn.execute("SELECT 1")
+            await conn.execute(text("SELECT 1"))
         print("Database connected successfully")
     except Exception as e:
         print(f"Database connection failed: {e}")

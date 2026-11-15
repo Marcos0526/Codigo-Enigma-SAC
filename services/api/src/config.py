@@ -28,10 +28,13 @@ class Settings(BaseSettings):
     EMBEDDING_API_URL: str = "http://localhost:8080/embed"
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     EMBEDDING_VERSION: str = "1.0.0"
-    VECTOR_DIMENSIONS: int = 384
+    EMBEDDING_DIMENSIONS: int = 384
+    EMBEDDING_BATCH_SIZE: int = 32
+    EMBEDDING_MAX_LENGTH: int = 512
 
     # NVIDIA API (when using EMBEDDING_PROVIDER=nvidia)
     NVIDIA_API_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
+    NVIDIA_INPUT_TYPE: str = "query"
 
     # LLM Service
     LLM_PROVIDER: str = "openai"
@@ -86,6 +89,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
+        extra = "allow"
 
     @property
     def allowed_domains_list(self) -> List[str]:

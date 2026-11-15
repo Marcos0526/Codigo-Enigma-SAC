@@ -93,16 +93,16 @@ async def search_datasets(
         datasets = []
         for row in results:
             datasets.append(SearchResult(
-                id=row.dataset_stable_id,
-                psiId=row.psi_id,
-                name=row.name,
-                description=row.description,
-                url=row.url,
-                format=row.format,
-                numericColumns=row.numeric_columns,
-                score=round(row.score, 4),
-                investigationTitle=row.investigation_title,
-                verificationStatus=row.verification_status,
+                id=row["dataset_id"],
+                psiId=row["psi_id"],
+                name=row["name"],
+                description=row["description"] or "",
+                url=row["url"],
+                format=row["format"],
+                numericColumns=row["numeric_columns"],
+                score=round(row["score"], 4),
+                investigationTitle=row.get("investigation_title"),
+                verificationStatus=row["verification_status"],
             ))
 
         status_value = "matches_found" if datasets else "no_matches"
@@ -171,22 +171,22 @@ async def vector_search(
     filter_verification: Optional[List[str]],
 ) -> List:
     """Execute vector similarity search using pgvector."""
-    embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
-
     # Build filter conditions
+    param_idx = 4
     psi_filter = ""
     if filter_psi_ids:
-        psi_placeholders = ",".join([f"${i}" for i in range(4, 4 + len(filter_psi_ids))])
+        psi_placeholders = ",".join([f"${i}" for i in range(param_idx, param_idx + len(filter_psi_ids))])
         psi_filter = f"AND d.psi_id IN ({psi_placeholders})"
+        param_idx += len(filter_psi_ids)
 
     ver_filter = ""
     if filter_verification:
-        ver_placeholders = ",".join([f"${i}" for i in range(4 + len(filter_psi_ids or []), 4 + len(filter_psi_ids or []) + len(filter_verification))])
+        ver_placeholders = ",".join([f"${i}" for i in range(param_idx, param_idx + len(filter_verification))])
         ver_filter = f"AND d.verification_status IN ({ver_placeholders})"
+        param_idx += len(filter_verification)
 
     query = f"""
         SELECT
-            d.id,
             d.dataset_id,
             d.psi_id,
             d.name,
@@ -194,27 +194,32 @@ async def vector_search(
             d.url,
             d.format,
             d.numeric_columns,
-            1 - (de.embedding <=> $1::vector) AS score,
+            1 - (de.embedding <=> $1) AS score,
             pi.title AS investigation_title,
             d.verification_status
         FROM datasets d
         JOIN dataset_embeddings de ON de.dataset_id = d.id
         JOIN psi_investigations pi ON pi.psi_id = d.psi_id
-        WHERE 1 - (de.embedding <=> $1::vector) >= $2
+        WHERE 1 - (de.embedding <=> $1) >= $2
           AND d.verification_status = 'verified'
           AND d.numeric_columns IS NOT NULL
           AND array_length(d.numeric_columns, 1) > 0
           {psi_filter}
           {ver_filter}
-        ORDER BY de.embedding <=> $1::vector
+        ORDER BY de.embedding <=> $1
         LIMIT $3
     """
 
-    params = [embedding_str, min_similarity, match_count]
-    if filter_psi_ids:
-        params.extend(filter_psi_ids)
-    if filter_verification:
-        params.extend(filter_verification)
-
-    result = await db.execute(text(query), params)
-    return result.fetchall()
+    # Use raw connection for pgvector compatibility
+    from services.api.src.database import get_db_context
+    async with get_db_context() as conn:
+        # pgvector expects vector as string format '[1,2,3]'
+        embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
+        params = [embedding_str, min_similarity, match_count]
+        if filter_psi_ids:
+            params.extend(filter_psi_ids)
+        if filter_verification:
+            params.extend(filter_verification)
+        
+        rows = await conn.fetch(query, *params)
+        return [dict(row) for row in rows]
